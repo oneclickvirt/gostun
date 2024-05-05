@@ -31,6 +31,7 @@ address and port dependent
 | Restricted Cone  | ```endpoint independent```   |  ```address dependent```  |
 | Port Restricted Cone |  ```endpoint independent```   |  ```address and port dependent```  |
 | Symmetric       | ```address and port dependent``` | ```address and port dependent``` |
+| Inconclusive    |           ```inconclusive```    |  ```inconclusive```         |
 
 ## 使用说明[Usage]
 
