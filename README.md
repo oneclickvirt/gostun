@@ -19,10 +19,10 @@ address and port dependent
 
 | NAT Type             | Nat Mapping Behavior          | Nat Filtering Behavior         |
 |----------------------|------------------------|----------------------|
-| Full Cone        | ```endpoint independent (no NAT)``` | ```endpoint independent``` |
-| Restricted Cone  |    |    |
-| Port Restricted Cone |     |    |
-| Symmetric       | ```address dependent```、```address and port dependent``` |  |
+| Full Cone        | ```endpoint independent``` | ```endpoint independent``` |
+| Restricted Cone  | ```endpoint independent```   |  ```address dependent```  |
+| Port Restricted Cone |  ```endpoint independent```   |  ```address and port dependent```  |
+| Symmetric       | ```address and port dependent``` | ```address and port dependent``` |
 
 ## Thanks
 

@@ -82,14 +82,19 @@ func main() {
 			fmt.Println("NAT Type: inconclusive")
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "endpoint independent" {
 			fmt.Println("NAT Type: Full Cone")
+		} else if strings.Contains(NatMappingBehavior,"endpoint independent") && strings.Contains(NatFilteringBehavior,"address dependent") {
+			fmt.Println("NAT Type: Restricted Cone")
+		} else if strings.Contains(NatMappingBehavior,"endpoint independent") && strings.Contains(NatFilteringBehavior,"address and port dependent") {
+			fmt.Println("NAT Type: Port Restricted Cone")
 		} else if NatMappingBehavior == "address dependent" || NatMappingBehavior == "address and port dependent" {
 			fmt.Println("NAT Type: Symmetric")
+		} else {
+			fmt.Printf("NAT Type: %v[NatMappingBehavior] %v[NatFilteringBehavior]\n", NatMappingBehavior, NatFilteringBehavior)
 		}
-		// } else if strings.Contains(NatMappingBehavior,"") && strings.Contains(NatFilteringBehavior,"") {
-		//	fmt.Println("NAT Type: Restricted Cone")
-		//	} else if strings.Contains(NatMappingBehavior,"") && strings.Contains(NatFilteringBehavior,"") {
-		//		fmt.Println("NAT Type: Port Restricted Cone")
+	} else {
+		fmt.Println("NAT Type: inconclusive")
 	}
+	// my changes end
 }
 
 // RFC5780: 4.3.  Determining NAT Mapping Behavior
@@ -362,9 +367,3 @@ func listen(conn *net.UDPConn) (messages chan *stun.Message) {
 	}()
 	return
 }
-
-// go install github.com/pion/stun/v2/cmd/stun-nat-behaviour@latest
-
-// $GOPATH/bin/stun-nat-behaviour --server stun.l.google.com:19302
-
-// $GOPATH/bin/stun-nat-behaviour -h
