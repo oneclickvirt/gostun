@@ -4,7 +4,7 @@
 
 本机NAT类型检测工具
 
-Local NAT type detection tool
+Local NAT type detection tool (NatTypeTester)
 
 ## 类型说明[Information]
 
