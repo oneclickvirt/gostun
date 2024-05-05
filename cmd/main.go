@@ -85,7 +85,7 @@ func main() {
 	// my changes start
 	if NatMappingBehavior != "" && NatFilteringBehavior != "" {
 		if NatMappingBehavior == "inconclusive" || NatFilteringBehavior == "inconclusive" {
-			fmt.Println("NAT Type: inconclusive")
+			fmt.Println("NAT Type: Inconclusive")
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "endpoint independent" {
 			fmt.Println("NAT Type: Full Cone")
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "address dependent" {
@@ -98,7 +98,7 @@ func main() {
 			fmt.Printf("NAT Type: %v[NatMappingBehavior] %v[NatFilteringBehavior]\n", NatMappingBehavior, NatFilteringBehavior)
 		}
 	} else {
-		fmt.Println("NAT Type: inconclusive")
+		fmt.Println("NAT Type: Inconclusive")
 	}
 	// my changes end
 }
