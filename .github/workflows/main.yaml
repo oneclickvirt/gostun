@@ -21,6 +21,10 @@ jobs:
       uses: actions/setup-go@v3
       with:
         go-version: 'stable'
+      
+    - name: Test on Default Platform
+      run: |
+        go test -v ./...
     
     - name: Delete Existing Release Assets
       run: |
