@@ -56,7 +56,12 @@ var (
 
 func main() {
 	flag.Parse()
-
+	// my changes start
+	go func() {
+		http.Get("https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2Fgostun&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false")
+	}()
+	fmt.Println("项目地址:", "https://github.com/oneclickvirt/gostun")
+	// my changes end
 	var logLevel logging.LogLevel
 	switch *verbose {
 	case 0:
@@ -79,10 +84,6 @@ func main() {
 		log.Warn("NAT filtering behavior: inconclusive")
 	}
 	// my changes start
-	go func() {
-		http.Get("https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2Fgostun&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false")
-	}()
-	fmt.Println("项目地址:", "https://github.com/oneclickvirt/gostun")
 	if NatMappingBehavior != "" && NatFilteringBehavior != "" {
 		if NatMappingBehavior == "inconclusive" || NatFilteringBehavior == "inconclusive" {
 			fmt.Println("NAT Type: inconclusive")
