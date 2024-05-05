@@ -89,11 +89,11 @@ func main() {
 			fmt.Println("NAT Type: inconclusive")
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "endpoint independent" {
 			fmt.Println("NAT Type: Full Cone")
-		} else if strings.Contains(NatMappingBehavior, "endpoint independent") && strings.Contains(NatFilteringBehavior, "address dependent") {
+		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "address dependent" {
 			fmt.Println("NAT Type: Restricted Cone")
-		} else if strings.Contains(NatMappingBehavior, "endpoint independent") && strings.Contains(NatFilteringBehavior, "address and port dependent") {
+		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "address and port dependent" {
 			fmt.Println("NAT Type: Port Restricted Cone")
-		} else if NatMappingBehavior == "address dependent" || NatMappingBehavior == "address and port dependent" {
+		} else if NatMappingBehavior == "address and port dependent" && NatFilteringBehavior == "address and port dependent" {
 			fmt.Println("NAT Type: Symmetric")
 		} else {
 			fmt.Printf("NAT Type: %v[NatMappingBehavior] %v[NatFilteringBehavior]\n", NatMappingBehavior, NatFilteringBehavior)
