@@ -54,7 +54,6 @@ jobs:
     - name: Build and Release
       run: |
         mkdir -p bin
-        cd cmd
         CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o ../bin/gostun-${{ matrix.goos }}-${{ matrix.goarch }} -v -ldflags="-extldflags=-static" .
 
     - name: Upload New Assets
