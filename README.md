@@ -1,5 +1,7 @@
 # gostun
 
+## Information
+
 ```
 NatMappingBehavior:
 inconclusive
@@ -23,6 +25,14 @@ address and port dependent
 | Restricted Cone  | ```endpoint independent```   |  ```address dependent```  |
 | Port Restricted Cone |  ```endpoint independent```   |  ```address and port dependent```  |
 | Symmetric       | ```address and port dependent``` | ```address and port dependent``` |
+
+## Usage
+
+Version: 2024.05.05
+
+```
+curl https://raw.githubusercontent.com/oneclickvirt/gostun/main/gostun_install.sh -sSf | sh
+```
 
 ## Thanks
 
