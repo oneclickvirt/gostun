@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ var (
 	NatMappingBehavior   string
 	NatFilteringBehavior string
 )
+
 // my changes end
 
 type stunServerConn struct {
@@ -77,14 +79,18 @@ func main() {
 		log.Warn("NAT filtering behavior: inconclusive")
 	}
 	// my changes start
+	go func() {
+		http.Get("https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2Fgostun&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false")
+	}()
+	fmt.Println("项目地址:", "https://github.com/oneclickvirt/gostun")
 	if NatMappingBehavior != "" && NatFilteringBehavior != "" {
 		if NatMappingBehavior == "inconclusive" || NatFilteringBehavior == "inconclusive" {
 			fmt.Println("NAT Type: inconclusive")
 		} else if NatMappingBehavior == "endpoint independent" && NatFilteringBehavior == "endpoint independent" {
 			fmt.Println("NAT Type: Full Cone")
-		} else if strings.Contains(NatMappingBehavior,"endpoint independent") && strings.Contains(NatFilteringBehavior,"address dependent") {
+		} else if strings.Contains(NatMappingBehavior, "endpoint independent") && strings.Contains(NatFilteringBehavior, "address dependent") {
 			fmt.Println("NAT Type: Restricted Cone")
-		} else if strings.Contains(NatMappingBehavior,"endpoint independent") && strings.Contains(NatFilteringBehavior,"address and port dependent") {
+		} else if strings.Contains(NatMappingBehavior, "endpoint independent") && strings.Contains(NatFilteringBehavior, "address and port dependent") {
 			fmt.Println("NAT Type: Port Restricted Cone")
 		} else if NatMappingBehavior == "address dependent" || NatMappingBehavior == "address and port dependent" {
 			fmt.Println("NAT Type: Symmetric")
@@ -208,8 +214,8 @@ func filteringTests(addrStr string) error {
 
 	resp, err = mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
 	if err == nil {
-		parse(resp) // just to print out the resp
-		NatFilteringBehavior="endpoint independent" // my changes
+		parse(resp)                                   // just to print out the resp
+		NatFilteringBehavior = "endpoint independent" // my changes
 		log.Warn("=> NAT filtering behavior: endpoint independent")
 		return nil
 	} else if !errors.Is(err, errTimedOut) {
@@ -223,7 +229,7 @@ func filteringTests(addrStr string) error {
 
 	resp, err = mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
 	if err == nil {
-		parse(resp) // just to print out the resp
+		parse(resp)                                // just to print out the resp
 		NatFilteringBehavior = "address dependent" // my changes
 		log.Warn("=> NAT filtering behavior: address dependent")
 	} else if errors.Is(err, errTimedOut) {
