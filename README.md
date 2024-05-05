@@ -4,7 +4,9 @@
 
 本机NAT类型检测工具
 
-## Information
+Local NAT type detection tool
+
+## 类型说明[Information]
 
 ```
 NatMappingBehavior:
@@ -30,15 +32,28 @@ address and port dependent
 | Port Restricted Cone |  ```endpoint independent```   |  ```address and port dependent```  |
 | Symmetric       | ```address and port dependent``` | ```address and port dependent``` |
 
-## Usage
+## 使用说明[Usage]
 
-Version: 2024.05.05
+更新时间[Version]: 2024.05.05
 
 ```
 curl https://raw.githubusercontent.com/oneclickvirt/gostun/main/gostun_install.sh -sSf | sh
 ```
 
-## Thanks
+更多架构请查看 https://github.com/oneclickvirt/gostun/releases/tag/output
+
+```
+  -server string
+        STUN server address (default "stun.voipgate.com:3478")
+  -timeout int
+        the number of seconds to wait for STUN server's response (default 3)
+  -verbose int
+        the verbosity level
+```
+
+![图片](https://github.com/oneclickvirt/gostun/assets/103393591/303afc84-b92f-4e16-9d6c-1c9aa34a1221)
+
+## 感谢[Thanks]
 
 https://datatracker.ietf.org/doc/html/rfc3489#section-5
 
