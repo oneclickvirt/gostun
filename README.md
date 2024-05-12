@@ -33,6 +33,10 @@ address and port dependent
 | Symmetric       | ```address and port dependent``` | ```address and port dependent``` |
 | Inconclusive    |           ```inconclusive```    |  ```inconclusive```         |
 
+## TODO
+
+- [ ] 加入UDP检测
+
 ## 使用说明[Usage]
 
 更新时间[Version]: 2024.05.05
