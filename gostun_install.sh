@@ -32,7 +32,7 @@ case $os in
       "i386" | "i686")
         wget -O gostun https://github.com/oneclickvirt/gostun/releases/download/output/gostun-darwin-386
         ;;
-      "armv7l" | "armv8" | "armv8l" | "aarch64")
+      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
         wget -O gostun https://github.com/oneclickvirt/gostun/releases/download/output/gostun-darwin-arm64
         ;;
       *)
