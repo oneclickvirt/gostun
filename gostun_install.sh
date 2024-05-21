@@ -1,6 +1,6 @@
 #!/bin/bash
 #From https://github.com/oneclickvirt/gostun
-#2024.05.05
+#2024.05.21
 
 rm -rf gostun
 os=$(uname -s)
@@ -15,7 +15,7 @@ case $os in
       "i386" | "i686")
         wget -O gostun https://github.com/oneclickvirt/gostun/releases/download/output/gostun-linux-386
         ;;
-      "armv7l" | "armv8" | "armv8l" | "aarch64")
+      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
         wget -O gostun https://github.com/oneclickvirt/gostun/releases/download/output/gostun-linux-arm64
         ;;
       *)
@@ -49,7 +49,7 @@ case $os in
       "i386" | "i686")
         wget -O gostun https://github.com/oneclickvirt/gostun/releases/download/output/gostun-freebsd-386
         ;;
-      "armv7l" | "armv8" | "armv8l" | "aarch64")
+      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
         wget -O gostun https://github.com/oneclickvirt/gostun/releases/download/output/gostun-freebsd-arm64
         ;;
       *)
@@ -66,7 +66,7 @@ case $os in
       "i386" | "i686")
         wget -O gostun https://github.com/oneclickvirt/gostun/releases/download/output/gostun-openbsd-386
         ;;
-      "armv7l" | "armv8" | "armv8l" | "aarch64")
+      "armv7l" | "armv8" | "armv8l" | "aarch64" | "arm64")
         wget -O gostun https://github.com/oneclickvirt/gostun/releases/download/output/gostun-openbsd-arm64
         ;;
       *)
