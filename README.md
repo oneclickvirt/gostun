@@ -39,7 +39,7 @@ address and port dependent
 
 ## 使用说明[Usage]
 
-更新时间[Version]: 2024.05.05
+更新时间[Version]: 2024.06.08
 
 ```
 curl https://raw.githubusercontent.com/oneclickvirt/gostun/main/gostun_install.sh -sSf | sh

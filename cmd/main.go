@@ -74,13 +74,44 @@ func main() {
 	}
 	log = logging.NewDefaultLeveledLoggerForScope("", logLevel, os.Stdout)
 
-	if err := mappingTests(*addrStrPtr); err != nil {
-		NatMappingBehavior = "inconclusive" // my changes
-		log.Warn("NAT mapping behavior: inconclusive")
-	}
-	if err := filteringTests(*addrStrPtr); err != nil {
-		NatFilteringBehavior = "inconclusive" // my changes
-		log.Warn("NAT filtering behavior: inconclusive")
+	if *addrStrPtr == "stun.voipgate.com:3478" {
+		if err := mappingTests(*addrStrPtr); err != nil {
+			NatMappingBehavior = "inconclusive" // my changes
+			log.Warn("NAT mapping behavior: inconclusive")
+		}
+		if err := filteringTests(*addrStrPtr); err != nil {
+			NatFilteringBehavior = "inconclusive" // my changes
+			log.Warn("NAT filtering behavior: inconclusive")
+		}
+	} else {
+		addrStrPtrList := []string{
+			"stun.voipgate.com:3478",
+			"stun.miwifi.com:3478",
+			"stunserver.stunprotocol.org:3478",
+		}
+		checkStatus := true
+		for _, addrStr := range addrStrPtrList {
+			err1 := mappingTests(addrStr)
+			if err1 != nil {
+				NatMappingBehavior = "inconclusive"
+				log.Warn("NAT mapping behavior: inconclusive")
+				checkStatus = false
+			}
+			err2 := filteringTests(addrStr)
+			if err2 != nil {
+				NatFilteringBehavior = "inconclusive"
+				log.Warn("NAT filtering behavior: inconclusive")
+				checkStatus = false
+			}
+			if NatMappingBehavior == "inconclusive" || NatFilteringBehavior == "inconclusive" {
+				checkStatus = false
+			} else if NatMappingBehavior != "inconclusive" && NatFilteringBehavior != "inconclusive" {
+				checkStatus = true
+			}
+			if checkStatus {
+				break
+			}
+		}
 	}
 	// my changes start
 	if NatMappingBehavior != "" && NatFilteringBehavior != "" {
