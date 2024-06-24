@@ -76,6 +76,12 @@ Usage of gostun:
 
 ![图片](https://github.com/oneclickvirt/gostun/assets/103393591/303afc84-b92f-4e16-9d6c-1c9aa34a1221)
 
+## 在Golang中使用
+
+```
+go get github.com/oneclickvirt/gostun@latest
+```
+
 ## 感谢[Thanks]
 
 https://datatracker.ietf.org/doc/html/rfc3489#section-5
