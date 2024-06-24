@@ -39,7 +39,7 @@ address and port dependent
 
 ## 使用说明[Usage]
 
-更新时间[Version]: 2024.06.08
+更新时间[Version]: 2024.06.24
 
 下载及安装
 
