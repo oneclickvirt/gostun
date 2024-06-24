@@ -17,11 +17,11 @@ import (
 // I only make changes to summarize the NAT type
 
 // my changes start
+const GoStunVersion = "v0.0.1"
 var (
 	NatMappingBehavior   string
 	NatFilteringBehavior string
 )
-
 // my changes end
 
 type stunServerConn struct {
@@ -54,12 +54,19 @@ var (
 )
 
 func main() {
-	flag.Parse()
+	// flag.Parse()
 	// my changes start
+	var showVersion bool
+	flag.BoolVar(&showVersion, "v", false, "show version")
+	flag.Parse()
 	go func() {
 		http.Get("https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2Fgostun&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false")
 	}()
 	fmt.Println("项目地址:", "https://github.com/oneclickvirt/gostun")
+	if showVersion {
+		fmt.Println(GoStunVersion)
+		return
+	}
 	// my changes end
 	var logLevel logging.LogLevel
 	switch *verbose {
