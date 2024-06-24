@@ -41,17 +41,35 @@ address and port dependent
 
 更新时间[Version]: 2024.06.08
 
+下载及安装
+
 ```
 curl https://raw.githubusercontent.com/oneclickvirt/gostun/main/gostun_install.sh -sSf | sh
 ```
 
+使用
+
+```
+gostun
+```
+
+或
+
+```
+./gostun
+```
+
+进行测试
+
 无环境依赖，理论上适配所有系统和主流架构，更多架构请查看 https://github.com/oneclickvirt/gostun/releases/tag/output
 
 ```
+Usage of gostun:
   -server string
         STUN server address (default "stun.voipgate.com:3478")
   -timeout int
         the number of seconds to wait for STUN server's response (default 3)
+  -v    show version
   -verbose int
         the verbosity level
 ```
