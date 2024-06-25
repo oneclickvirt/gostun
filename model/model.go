@@ -11,4 +11,5 @@ var (
 	Log                  logging.LeveledLogger
 	NatMappingBehavior   string
 	NatFilteringBehavior string
+	EnableLoger          = true
 )
