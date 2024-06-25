@@ -39,7 +39,7 @@ address and port dependent
 
 ## 使用说明[Usage]
 
-更新时间[Version]: 2024.06.24
+更新时间[Version]: 2024.06.25
 
 下载及安装
 
@@ -65,6 +65,7 @@ gostun
 
 ```
 Usage of gostun:
+  -e    Enable logging (default true)
   -server string
         STUN server address (default "stun.voipgate.com:3478")
   -timeout int
