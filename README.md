@@ -77,6 +77,14 @@ Usage of gostun:
 
 ![图片](https://github.com/oneclickvirt/gostun/assets/103393591/303afc84-b92f-4e16-9d6c-1c9aa34a1221)
 
+
+## 卸载
+
+```
+rm -rf /root/gostun
+rm -rf /usr/bin/gostun
+```
+
 ## 在Golang中使用
 
 ```
