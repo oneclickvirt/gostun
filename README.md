@@ -62,15 +62,16 @@ gostun
 无环境依赖，理论上适配所有系统和主流架构，更多架构请查看 https://github.com/oneclickvirt/gostun/releases/tag/output
 
 ```
-Usage of gostun:
-  -e    Enable logging (default true)
+Usage: gostun [options]
+  -e    Enable logging functionality (default true)
+  -h    Display help information
   -server string
-        STUN server address (default "stun.voipgate.com:3478")
+        Specify STUN server address (default "stun.voipgate.com:3478")
   -timeout int
-        the number of seconds to wait for STUN server's response (default 3)
-  -v    show version
+        Set timeout in seconds for STUN server response (default 3)
+  -v    Display version information
   -verbose int
-        the verbosity level
+        Set verbosity level
 ```
 
 ![图片](https://github.com/oneclickvirt/gostun/assets/103393591/303afc84-b92f-4e16-9d6c-1c9aa34a1221)
