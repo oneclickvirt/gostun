@@ -12,13 +12,20 @@ import (
 )
 
 func main() {
-	var showVersion bool
-	flag.BoolVar(&showVersion, "v", false, "show version")
-	flag.IntVar(&model.Verbose, "verbose", 0, "the verbosity level")
-	flag.IntVar(&model.Timeout, "timeout", 3, "the number of seconds to wait for STUN server's response")
-	flag.StringVar(&model.AddrStr, "server", "stun.voipgate.com:3478", "STUN server address")
-	flag.BoolVar(&model.EnableLoger, "e", true, "Enable logging")
-	flag.Parse()
+	var showVersion, help bool
+	gostunFlag := flag.NewFlagSet("gostun", flag.ContinueOnError)
+	gostunFlag.BoolVar(&help, "h", false, "Display help information")
+	gostunFlag.BoolVar(&showVersion, "v", false, "Display version information")
+	gostunFlag.IntVar(&model.Verbose, "verbose", 0, "Set verbosity level")
+	gostunFlag.IntVar(&model.Timeout, "timeout", 3, "Set timeout in seconds for STUN server response")
+	gostunFlag.StringVar(&model.AddrStr, "server", "stun.voipgate.com:3478", "Specify STUN server address")
+	gostunFlag.BoolVar(&model.EnableLoger, "e", true, "Enable logging functionality")
+	gostunFlag.Parse(os.Args[1:])
+	if help {
+		fmt.Printf("Usage: %s [options]\n", os.Args[0])
+		gostunFlag.PrintDefaults()
+		return
+	}
 	go func() {
 		http.Get("https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Foneclickvirt%2Fgostun&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false")
 	}()
