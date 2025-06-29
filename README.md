@@ -89,7 +89,7 @@ rm -rf /usr/bin/gostun
 ## 在Golang中使用
 
 ```
-go get github.com/oneclickvirt/gostun@latest
+go get github.com/oneclickvirt/gostun@
 ```
 
 ## 感谢[Thanks]
