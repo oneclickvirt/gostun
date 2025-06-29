@@ -27,6 +27,7 @@ jobs:
           TAG="v0.0.3-$(date +'%Y%m%d%H%M%S')"
           git tag $TAG
           git push origin $TAG
+          echo "TAG=$TAG" >> $GITHUB_ENV
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
