@@ -63,6 +63,8 @@ gostun
 Usage: gostun [options]
   -e    Enable logging functionality (default true)
   -h    Display help information
+  -protocol string
+        Specify transmission protocol: udp, tcp, or tls (default "udp")
   -server string
         Specify STUN server address (default "stun.voipgate.com:3478")
   -timeout int
@@ -94,8 +96,12 @@ go get github.com/oneclickvirt/gostun@v0.0.5-20250722135019
 
 https://www.rfc-editor.org/info/rfc5389
 
-https://datatracker.ietf.org/doc/html/rfc3489#section-5
+https://datatracker.ietf.org/doc/html/rfc3489
 
-https://datatracker.ietf.org/doc/html/rfc4787#section-5
+https://datatracker.ietf.org/doc/html/rfc4787
+
+https://datatracker.ietf.org/doc/html/rfc5389
+
+https://datatracker.ietf.org/doc/html/rfc8839
 
 https://github.com/pion/stun/tree/master/cmd/stun-nat-behaviour
