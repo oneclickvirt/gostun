@@ -414,6 +414,7 @@ func parse(msg *stun.Message) (ret struct {
 	for _, attr := range msg.Attributes {
 		switch attr.Type {
 		case stun.AttrXORMappedAddress, stun.AttrOtherAddress, stun.AttrResponseOrigin, stun.AttrMappedAddress, stun.AttrSoftware:
+			break //nolint:staticcheck
 		default:
 			if model.EnableLoger {
 				model.Log.Debugf("\t%v (l=%v)", attr, attr.Length)
