@@ -83,6 +83,7 @@ func main() {
 	gostunFlag.StringVar(&model.AddrStr, "server", "stun.voipgate.com:3478", "Specify STUN server address")
 	gostunFlag.BoolVar(&model.EnableLoger, "e", true, "Enable logging functionality")
 	gostunFlag.StringVar(&model.IPVersion, "type", "ipv4", "Specify ip test version: ipv4, ipv6 or both")
+	gostunFlag.StringVar(&model.TransmissionProtocol, "protocol", "udp", "Specify transmission protocol: udp, tcp, or tls")
 	gostunFlag.Parse(os.Args[1:])
 	if help {
 		fmt.Printf("Usage: %s [options]\n", os.Args[0])

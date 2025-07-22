@@ -6,8 +6,6 @@ import (
 	"github.com/oneclickvirt/gostun/model"
 )
 
-// CheckType
-// Summarize the NAT type
 func CheckType() string {
 	var result string
 	if model.NatMappingBehavior != "" && model.NatFilteringBehavior != "" {

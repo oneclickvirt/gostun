@@ -6,13 +6,14 @@ const GoStunVersion = "v0.0.5"
 
 var (
 	AddrStr              = "stun.voipgate.com:3478"
-	Timeout              = 3
+	Timeout              = 5
 	Verbose              = 0
 	Log                  logging.LeveledLogger
 	NatMappingBehavior   string
 	NatFilteringBehavior string
 	EnableLoger          = true
 	IPVersion            = "ipv4"
+	TransmissionProtocol = "udp"
 )
 
 func GetDefaultServers(IPVersion string) []string {

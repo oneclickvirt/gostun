@@ -1,6 +1,7 @@
 package stuncheck
 
 import (
+	"crypto/tls"
 	"errors"
 	"net"
 	"time"
@@ -9,14 +10,13 @@ import (
 	"github.com/pion/stun/v2"
 )
 
-// From https://github.com/pion/stun/blob/master/cmd/stun-nat-behaviour/main.go
-
 type stunServerConn struct {
-	conn        net.PacketConn
+	conn        net.Conn
 	LocalAddr   net.Addr
 	RemoteAddr  *net.UDPAddr
 	OtherAddr   *net.UDPAddr
 	messageChan chan *stun.Message
+	protocol    string
 }
 
 func (c *stunServerConn) Close() error {
@@ -45,14 +45,29 @@ func isIPv6Address(addr string) bool {
 func getNetworkType(addrStr string) string {
 	switch model.IPVersion {
 	case "ipv6":
+		if model.TransmissionProtocol == "tcp" {
+			return "tcp6"
+		}
 		return "udp6"
 	case "ipv4":
+		if model.TransmissionProtocol == "tcp" {
+			return "tcp4"
+		}
 		return "udp4"
 	case "both":
 		if isIPv6Address(addrStr) {
+			if model.TransmissionProtocol == "tcp" {
+				return "tcp6"
+			}
 			return "udp6"
 		}
+		if model.TransmissionProtocol == "tcp" {
+			return "tcp4"
+		}
 		return "udp4"
+	}
+	if model.TransmissionProtocol == "tcp" {
+		return "tcp4"
 	}
 	return "udp4"
 }
@@ -68,8 +83,7 @@ func getCurrentProtocol(addrStr string) string {
 	return "ipv4"
 }
 
-// RFC 5780 implementation (current)
-func MappingTests(addrStr string) error { //nolint:cyclop
+func MappingTests(addrStr string) error {
 	currentProtocol := getCurrentProtocol(addrStr)
 	mapTestConn, err := connect(addrStr)
 	if err != nil {
@@ -157,8 +171,7 @@ func MappingTests(addrStr string) error { //nolint:cyclop
 	return mapTestConn.Close()
 }
 
-// RFC 5780 implementation (current)
-func FilteringTests(addrStr string) error { //nolint:cyclop
+func FilteringTests(addrStr string) error {
 	currentProtocol := getCurrentProtocol(addrStr)
 	mapTestConn, err := connect(addrStr)
 	if err != nil {
@@ -228,7 +241,6 @@ func FilteringTests(addrStr string) error { //nolint:cyclop
 	return mapTestConn.Close()
 }
 
-// RFC 5389/8489 implementation - basic STUN binding request
 func MappingTestsRFC5389(addrStr string) error {
 	currentProtocol := getCurrentProtocol(addrStr)
 	mapTestConn, err := connect(addrStr)
@@ -257,12 +269,10 @@ func MappingTestsRFC5389(addrStr string) error {
 	if model.EnableLoger {
 		model.Log.Infof("[%s] RFC5389: Received XOR-MAPPED-ADDRESS: %v", currentProtocol, resps.xorAddr)
 	}
-	// Simple classification based on whether we're behind NAT
 	if resps.xorAddr.String() == mapTestConn.LocalAddr.String() {
 		model.NatMappingBehavior = "endpoint independent (no NAT)"
 		model.NatFilteringBehavior = "endpoint independent"
 	} else {
-		// Can't determine exact type with RFC5389, so use conservative estimate
 		model.NatMappingBehavior = "address and port dependent"
 		model.NatFilteringBehavior = "address and port dependent"
 	}
@@ -273,7 +283,6 @@ func MappingTestsRFC5389(addrStr string) error {
 	return nil
 }
 
-// RFC 3489 implementation - classic STUN
 func MappingTestsRFC3489(addrStr string) error {
 	currentProtocol := getCurrentProtocol(addrStr)
 	mapTestConn, err := connect(addrStr)
@@ -287,7 +296,6 @@ func MappingTestsRFC3489(addrStr string) error {
 	if model.EnableLoger {
 		model.Log.Infof("[%s] RFC3489: Test I - Basic binding request", currentProtocol)
 	}
-	// Test I: Basic binding request
 	request := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 	resp, err := mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
 	if err != nil {
@@ -295,7 +303,6 @@ func MappingTestsRFC3489(addrStr string) error {
 	}
 	resps1 := parse(resp)
 	var mappedAddr *net.UDPAddr
-	// Try XOR-MAPPED-ADDRESS first, then MAPPED-ADDRESS
 	if resps1.xorAddr != nil {
 		mappedAddr, _ = net.ResolveUDPAddr("udp", resps1.xorAddr.String())
 	} else if resps1.mappedAddr != nil {
@@ -310,26 +317,35 @@ func MappingTestsRFC3489(addrStr string) error {
 	if model.EnableLoger {
 		model.Log.Infof("[%s] RFC3489: Received mapped address: %v", currentProtocol, mappedAddr)
 	}
-	// Check if we're behind NAT
-	localUDP, _ := mapTestConn.LocalAddr.(*net.UDPAddr)
-	if mappedAddr.IP.Equal(localUDP.IP) && mappedAddr.Port == localUDP.Port {
-		// No NAT
-		model.NatMappingBehavior = "endpoint independent (no NAT)"
-		model.NatFilteringBehavior = "endpoint independent"
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] RFC3489: No NAT detected", currentProtocol)
+	localAddr := mapTestConn.LocalAddr
+	if model.TransmissionProtocol == "tcp" || model.TransmissionProtocol == "tls" {
+		localTCP := localAddr.(*net.TCPAddr)
+		if mappedAddr.IP.Equal(localTCP.IP) && mappedAddr.Port == localTCP.Port {
+			model.NatMappingBehavior = "endpoint independent (no NAT)"
+			model.NatFilteringBehavior = "endpoint independent"
+			if model.EnableLoger {
+				model.Log.Warnf("[%s] RFC3489: No NAT detected", currentProtocol)
+			}
+			return nil
 		}
-		return nil
+	} else {
+		localUDP := localAddr.(*net.UDPAddr)
+		if mappedAddr.IP.Equal(localUDP.IP) && mappedAddr.Port == localUDP.Port {
+			model.NatMappingBehavior = "endpoint independent (no NAT)"
+			model.NatFilteringBehavior = "endpoint independent"
+			if model.EnableLoger {
+				model.Log.Warnf("[%s] RFC3489: No NAT detected", currentProtocol)
+			}
+			return nil
+		}
 	}
-	// Test II: Binding request with change IP and Port
 	if model.EnableLoger {
 		model.Log.Infof("[%s] RFC3489: Test II - Request with change IP and Port", currentProtocol)
 	}
 	request2 := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	request2.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x06}) // Change both IP and port
+	request2.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x06})
 	resp2, err2 := mapTestConn.roundTrip(request2, mapTestConn.RemoteAddr)
 	if err2 == nil && resp2 != nil {
-		// Full cone NAT
 		model.NatMappingBehavior = "endpoint independent"
 		model.NatFilteringBehavior = "endpoint independent"
 		if model.EnableLoger {
@@ -337,15 +353,13 @@ func MappingTestsRFC3489(addrStr string) error {
 		}
 		return nil
 	}
-	// Test III: Binding request with change port only
 	if model.EnableLoger {
 		model.Log.Infof("[%s] RFC3489: Test III - Request with change Port only", currentProtocol)
 	}
 	request3 := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	request3.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x02}) // Change port only
+	request3.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x02})
 	resp3, err3 := mapTestConn.roundTrip(request3, mapTestConn.RemoteAddr)
 	if err3 == nil && resp3 != nil {
-		// Restricted cone NAT
 		model.NatMappingBehavior = "endpoint independent"
 		model.NatFilteringBehavior = "address dependent"
 		if model.EnableLoger {
@@ -353,8 +367,6 @@ func MappingTestsRFC3489(addrStr string) error {
 		}
 		return nil
 	}
-	// If we get here, we need to do additional tests for symmetric vs port restricted
-	// For simplicity in RFC3489, we'll classify remaining as Port Restricted or Symmetric
 	model.NatMappingBehavior = "address and port dependent"
 	model.NatFilteringBehavior = "address and port dependent"
 	if model.EnableLoger {
@@ -401,13 +413,7 @@ func parse(msg *stun.Message) (ret struct {
 	}
 	for _, attr := range msg.Attributes {
 		switch attr.Type {
-		case
-			stun.AttrXORMappedAddress,
-			stun.AttrOtherAddress,
-			stun.AttrResponseOrigin,
-			stun.AttrMappedAddress,
-			stun.AttrSoftware:
-			break //nolint:staticcheck
+		case stun.AttrXORMappedAddress, stun.AttrOtherAddress, stun.AttrResponseOrigin, stun.AttrMappedAddress, stun.AttrSoftware:
 		default:
 			if model.EnableLoger {
 				model.Log.Debugf("\t%v (l=%v)", attr, attr.Length)
@@ -423,27 +429,50 @@ func connect(addrStr string) (*stunServerConn, error) {
 		model.Log.Infof("[%s] Connecting to STUN server: %s", currentProtocol, addrStr)
 	}
 	networkType := getNetworkType(addrStr)
-	addr, err := net.ResolveUDPAddr(networkType, addrStr)
-	if err != nil {
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] Error resolving address: %s", currentProtocol, err)
+	var conn net.Conn
+	var localAddr net.Addr
+	var err error
+	switch model.TransmissionProtocol {
+	case "tcp":
+		conn, err = net.Dial(networkType, addrStr)
+		if err != nil {
+			return nil, err
 		}
-		return nil, err
-	}
-	c, err := net.ListenUDP(networkType, nil)
-	if err != nil {
-		return nil, err
+		localAddr = conn.LocalAddr()
+	case "tls":
+		config := &tls.Config{InsecureSkipVerify: true}
+		conn, err = tls.Dial(networkType[:3], addrStr, config)
+		if err != nil {
+			return nil, err
+		}
+		localAddr = conn.LocalAddr()
+	default:
+		_, err := net.ResolveUDPAddr(networkType, addrStr)
+		if err != nil {
+			if model.EnableLoger {
+				model.Log.Warnf("[%s] Error resolving address: %s", currentProtocol, err)
+			}
+			return nil, err
+		}
+		udpConn, err := net.ListenUDP(networkType, nil)
+		if err != nil {
+			return nil, err
+		}
+		conn = udpConn
+		localAddr = udpConn.LocalAddr()
 	}
 	if model.EnableLoger {
-		model.Log.Infof("[%s] Local address: %s", currentProtocol, c.LocalAddr())
-		model.Log.Infof("[%s] Remote address: %s", currentProtocol, addr.String())
+		model.Log.Infof("[%s] Local address: %s", currentProtocol, localAddr.String())
+		model.Log.Infof("[%s] Remote address: %s", currentProtocol, addrStr)
 	}
-	mChan := listen(c)
+	remoteAddr, _ := net.ResolveUDPAddr("udp", addrStr)
+	mChan := listen(conn)
 	return &stunServerConn{
-		conn:        c,
-		LocalAddr:   c.LocalAddr(),
-		RemoteAddr:  addr,
+		conn:        conn,
+		LocalAddr:   localAddr,
+		RemoteAddr:  remoteAddr,
 		messageChan: mChan,
+		protocol:    model.TransmissionProtocol,
 	}, nil
 }
 
@@ -456,7 +485,17 @@ func (c *stunServerConn) roundTrip(msg *stun.Message, addr net.Addr) (*stun.Mess
 			model.Log.Debugf("\t%v (l=%v)", attr, attr.Length)
 		}
 	}
-	_, err := c.conn.WriteTo(msg.Raw, addr)
+	var err error
+	switch c.protocol {
+	case "tcp", "tls":
+		_, err = c.conn.Write(msg.Raw)
+	default:
+		if udpConn, ok := c.conn.(*net.UDPConn); ok {
+			_, err = udpConn.WriteTo(msg.Raw, addr)
+		} else {
+			_, err = c.conn.Write(msg.Raw)
+		}
+	}
 	if err != nil {
 		if model.EnableLoger {
 			model.Log.Warnf("Error sending request to %v", addr)
@@ -477,15 +516,22 @@ func (c *stunServerConn) roundTrip(msg *stun.Message, addr net.Addr) (*stun.Mess
 	}
 }
 
-// taken from https://github.com/pion/stun/blob/master/cmd/stun-traversal/main.go
-func listen(conn *net.UDPConn) (messages chan *stun.Message) {
+func listen(conn net.Conn) (messages chan *stun.Message) {
 	messages = make(chan *stun.Message)
 	go func() {
+		defer close(messages)
 		for {
 			buf := make([]byte, 1024)
-			n, addr, err := conn.ReadFromUDP(buf)
+			var n int
+			var addr net.Addr
+			var err error
+			if udpConn, ok := conn.(*net.UDPConn); ok {
+				n, addr, err = udpConn.ReadFromUDP(buf)
+			} else {
+				n, err = conn.Read(buf)
+				addr = conn.RemoteAddr()
+			}
 			if err != nil {
-				close(messages)
 				return
 			}
 			if model.EnableLoger {
@@ -499,7 +545,6 @@ func listen(conn *net.UDPConn) (messages chan *stun.Message) {
 				if model.EnableLoger {
 					model.Log.Infof("Error decoding message: %v", err)
 				}
-				close(messages)
 				return
 			}
 			messages <- m
