@@ -16,18 +16,19 @@ var (
 )
 
 func GetDefaultServers(IPVersion string) []string {
-	if IPVersion == "ipv6" {
+	switch IPVersion {
+	case "ipv6":
 		return []string{
 			"stun.hot-chilli.net:3478",
 			"[2a01:4f8:242:56ca::2]:3478",
 		}
-	} else if IPVersion == "ipv4" {
+	case "ipv4":
 		return []string{
 			"stun.voipgate.com:3478",
 			"stun.miwifi.com:3478",
 			"stunserver.stunprotocol.org:3478",
 		}
-	} else {
+	default:
 		return []string{
 			"stun.voipgate.com:3478",
 			"stun.miwifi.com:3478",

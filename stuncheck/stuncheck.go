@@ -57,16 +57,28 @@ func getNetworkType(addrStr string) string {
 	return "udp4"
 }
 
+func getCurrentProtocol(addrStr string) string {
+	if model.IPVersion == "ipv6" {
+		return "ipv6"
+	} else if model.IPVersion == "ipv4" {
+		return "ipv4"
+	} else if isIPv6Address(addrStr) {
+		return "ipv6"
+	}
+	return "ipv4"
+}
+
 func MappingTests(addrStr string) error { //nolint:cyclop
+	currentProtocol := getCurrentProtocol(addrStr)
 	mapTestConn, err := connect(addrStr)
 	if err != nil {
 		if model.EnableLoger {
-			model.Log.Warnf("Error creating STUN connection: %s", err)
+			model.Log.Warnf("[%s] Error creating STUN connection: %s", currentProtocol, err)
 		}
 		return err
 	}
 	if model.EnableLoger {
-		model.Log.Info("Mapping Test I: Regular binding request")
+		model.Log.Infof("[%s] Mapping Test I: Regular binding request", currentProtocol)
 	}
 	request := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 	resp, err := mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
@@ -76,7 +88,7 @@ func MappingTests(addrStr string) error { //nolint:cyclop
 	resps1 := parse(resp)
 	if resps1.xorAddr == nil || resps1.otherAddr == nil {
 		if model.EnableLoger {
-			model.Log.Info("Error: NAT discovery feature not supported by this server")
+			model.Log.Infof("[%s] Error: NAT discovery feature not supported by this server", currentProtocol)
 		}
 		return errNoOtherAddress
 	}
@@ -84,23 +96,23 @@ func MappingTests(addrStr string) error { //nolint:cyclop
 	addr, err := net.ResolveUDPAddr(networkType, resps1.otherAddr.String())
 	if err != nil {
 		if model.EnableLoger {
-			model.Log.Infof("Failed resolving OTHER-ADDRESS: %v", resps1.otherAddr)
+			model.Log.Infof("[%s] Failed resolving OTHER-ADDRESS: %v", currentProtocol, resps1.otherAddr)
 		}
 		return err
 	}
 	mapTestConn.OtherAddr = addr
 	if model.EnableLoger {
-		model.Log.Infof("Received XOR-MAPPED-ADDRESS: %v", resps1.xorAddr)
+		model.Log.Infof("[%s] Received XOR-MAPPED-ADDRESS: %v", currentProtocol, resps1.xorAddr)
 	}
 	if resps1.xorAddr.String() == mapTestConn.LocalAddr.String() {
 		model.NatMappingBehavior = "endpoint independent (no NAT)"
 		if model.EnableLoger {
-			model.Log.Warn("=> NAT mapping behavior: endpoint independent (no NAT)")
+			model.Log.Warnf("[%s] => NAT mapping behavior: endpoint independent (no NAT)", currentProtocol)
 		}
 		return nil
 	}
 	if model.EnableLoger {
-		model.Log.Info("Mapping Test II: Send binding request to the other address but primary port")
+		model.Log.Infof("[%s] Mapping Test II: Send binding request to the other address but primary port", currentProtocol)
 	}
 	oaddr := *mapTestConn.OtherAddr
 	oaddr.Port = mapTestConn.RemoteAddr.Port
@@ -110,17 +122,17 @@ func MappingTests(addrStr string) error { //nolint:cyclop
 	}
 	resps2 := parse(resp)
 	if model.EnableLoger {
-		model.Log.Infof("Received XOR-MAPPED-ADDRESS: %v", resps2.xorAddr)
+		model.Log.Infof("[%s] Received XOR-MAPPED-ADDRESS: %v", currentProtocol, resps2.xorAddr)
 	}
 	if resps2.xorAddr.String() == resps1.xorAddr.String() {
 		model.NatMappingBehavior = "endpoint independent"
 		if model.EnableLoger {
-			model.Log.Warn("=> NAT mapping behavior: endpoint independent")
+			model.Log.Warnf("[%s] => NAT mapping behavior: endpoint independent", currentProtocol)
 		}
 		return nil
 	}
 	if model.EnableLoger {
-		model.Log.Info("Mapping Test III: Send binding request to the other address and port")
+		model.Log.Infof("[%s] Mapping Test III: Send binding request to the other address and port", currentProtocol)
 	}
 	resp, err = mapTestConn.roundTrip(request, mapTestConn.OtherAddr)
 	if err != nil {
@@ -128,32 +140,33 @@ func MappingTests(addrStr string) error { //nolint:cyclop
 	}
 	resps3 := parse(resp)
 	if model.EnableLoger {
-		model.Log.Infof("Received XOR-MAPPED-ADDRESS: %v", resps3.xorAddr)
+		model.Log.Infof("[%s] Received XOR-MAPPED-ADDRESS: %v", currentProtocol, resps3.xorAddr)
 	}
 	if resps3.xorAddr.String() == resps2.xorAddr.String() {
 		model.NatMappingBehavior = "address dependent"
 		if model.EnableLoger {
-			model.Log.Warn("=> NAT mapping behavior: address dependent")
+			model.Log.Warnf("[%s] => NAT mapping behavior: address dependent", currentProtocol)
 		}
 	} else {
 		model.NatMappingBehavior = "address and port dependent"
 		if model.EnableLoger {
-			model.Log.Warn("=> NAT mapping behavior: address and port dependent")
+			model.Log.Warnf("[%s] => NAT mapping behavior: address and port dependent", currentProtocol)
 		}
 	}
 	return mapTestConn.Close()
 }
 
 func FilteringTests(addrStr string) error { //nolint:cyclop
+	currentProtocol := getCurrentProtocol(addrStr)
 	mapTestConn, err := connect(addrStr)
 	if err != nil {
 		if model.EnableLoger {
-			model.Log.Warnf("Error creating STUN connection: %s", err)
+			model.Log.Warnf("[%s] Error creating STUN connection: %s", currentProtocol, err)
 		}
 		return err
 	}
 	if model.EnableLoger {
-		model.Log.Info("Filtering Test I: Regular binding request")
+		model.Log.Infof("[%s] Filtering Test I: Regular binding request", currentProtocol)
 	}
 	request := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 	resp, err := mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
@@ -163,7 +176,7 @@ func FilteringTests(addrStr string) error { //nolint:cyclop
 	resps := parse(resp)
 	if resps.xorAddr == nil || resps.otherAddr == nil {
 		if model.EnableLoger {
-			model.Log.Warn("Error: NAT discovery feature not supported by this server")
+			model.Log.Warnf("[%s] Error: NAT discovery feature not supported by this server", currentProtocol)
 		}
 		return errNoOtherAddress
 	}
@@ -171,13 +184,13 @@ func FilteringTests(addrStr string) error { //nolint:cyclop
 	addr, err := net.ResolveUDPAddr(networkType, resps.otherAddr.String())
 	if err != nil {
 		if model.EnableLoger {
-			model.Log.Infof("Failed resolving OTHER-ADDRESS: %v", resps.otherAddr)
+			model.Log.Infof("[%s] Failed resolving OTHER-ADDRESS: %v", currentProtocol, resps.otherAddr)
 		}
 		return err
 	}
 	mapTestConn.OtherAddr = addr
 	if model.EnableLoger {
-		model.Log.Info("Filtering Test II: Request to change both IP and port")
+		model.Log.Infof("[%s] Filtering Test II: Request to change both IP and port", currentProtocol)
 	}
 	request = stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 	request.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x06})
@@ -186,14 +199,14 @@ func FilteringTests(addrStr string) error { //nolint:cyclop
 		parse(resp)
 		model.NatFilteringBehavior = "endpoint independent"
 		if model.EnableLoger {
-			model.Log.Warn("=> NAT filtering behavior: endpoint independent")
+			model.Log.Warnf("[%s] => NAT filtering behavior: endpoint independent", currentProtocol)
 		}
 		return nil
 	} else if !errors.Is(err, errTimedOut) {
 		return err
 	}
 	if model.EnableLoger {
-		model.Log.Info("Filtering Test III: Request to change port only")
+		model.Log.Infof("[%s] Filtering Test III: Request to change port only", currentProtocol)
 	}
 	request = stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 	request.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x02})
@@ -202,12 +215,12 @@ func FilteringTests(addrStr string) error { //nolint:cyclop
 		parse(resp)
 		model.NatFilteringBehavior = "address dependent"
 		if model.EnableLoger {
-			model.Log.Warn("=> NAT filtering behavior: address dependent")
+			model.Log.Warnf("[%s] => NAT filtering behavior: address dependent", currentProtocol)
 		}
 	} else if errors.Is(err, errTimedOut) {
 		model.NatFilteringBehavior = "address and port dependent"
 		if model.EnableLoger {
-			model.Log.Warn("=> NAT filtering behavior: address and port dependent")
+			model.Log.Warnf("[%s] => NAT filtering behavior: address and port dependent", currentProtocol)
 		}
 	}
 	return mapTestConn.Close()
@@ -268,14 +281,15 @@ func parse(msg *stun.Message) (ret struct {
 }
 
 func connect(addrStr string) (*stunServerConn, error) {
+	currentProtocol := getCurrentProtocol(addrStr)
 	if model.EnableLoger {
-		model.Log.Infof("Connecting to STUN server: %s", addrStr)
+		model.Log.Infof("[%s] Connecting to STUN server: %s", currentProtocol, addrStr)
 	}
 	networkType := getNetworkType(addrStr)
 	addr, err := net.ResolveUDPAddr(networkType, addrStr)
 	if err != nil {
 		if model.EnableLoger {
-			model.Log.Warnf("Error resolving address: %s", err)
+			model.Log.Warnf("[%s] Error resolving address: %s", currentProtocol, err)
 		}
 		return nil, err
 	}
@@ -284,8 +298,8 @@ func connect(addrStr string) (*stunServerConn, error) {
 		return nil, err
 	}
 	if model.EnableLoger {
-		model.Log.Infof("Local address: %s", c.LocalAddr())
-		model.Log.Infof("Remote address: %s", addr.String())
+		model.Log.Infof("[%s] Local address: %s", currentProtocol, c.LocalAddr())
+		model.Log.Infof("[%s] Remote address: %s", currentProtocol, addr.String())
 	}
 	mChan := listen(c)
 	return &stunServerConn{
