@@ -2,7 +2,7 @@ package model
 
 import "github.com/pion/logging"
 
-const GoStunVersion = "v0.0.5"
+const GoStunVersion = "v0.0.6"
 
 var (
 	AddrStr              = "stun.voipgate.com:3478"
