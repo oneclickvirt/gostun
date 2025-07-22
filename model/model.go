@@ -18,8 +18,8 @@ var (
 func GetDefaultServers(IPVersion string) []string {
 	if IPVersion == "ipv6" {
 		return []string{
-			"[2001:4860:4860::8888]:19302",
-			"[2001:4860:4860::8844]:19302",
+			"stun.hot-chilli.net:3478",
+			"[2a01:4f8:242:56ca::2]:3478",
 		}
 	} else if IPVersion == "ipv4" {
 		return []string{
@@ -32,8 +32,8 @@ func GetDefaultServers(IPVersion string) []string {
 			"stun.voipgate.com:3478",
 			"stun.miwifi.com:3478",
 			"stunserver.stunprotocol.org:3478",
-			"[2001:4860:4860::8888]:19302",
-			"[2001:4860:4860::8844]:19302",
+			"stun.hot-chilli.net:3478",
+			"[2a01:4f8:242:56ca::2]:3478",
 		}
 	}
 }
