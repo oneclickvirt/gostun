@@ -35,10 +35,6 @@ address and port dependent
 | Symmetric       | ```address and port dependent``` | ```address and port dependent``` |
 | Inconclusive    |           ```inconclusive```    |  ```inconclusive```         |
 
-## TODO
-
-- [ ] 加入UDP检测
-
 ## 使用说明[Usage]
 
 下载、安装、更新
@@ -71,6 +67,8 @@ Usage: gostun [options]
         Specify STUN server address (default "stun.voipgate.com:3478")
   -timeout int
         Set timeout in seconds for STUN server response (default 3)
+  -type string
+        Specify ip test version: ipv4, ipv6 or both (default "ipv4")
   -v    Display version information
   -verbose int
         Set verbosity level
@@ -93,6 +91,8 @@ go get github.com/oneclickvirt/gostun@v0.0.3-20250629044639
 ```
 
 ## 感谢[Thanks]
+
+https://www.rfc-editor.org/info/rfc5389
 
 https://datatracker.ietf.org/doc/html/rfc3489#section-5
 

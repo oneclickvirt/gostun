@@ -13,6 +13,8 @@ func CheckType() string {
 	if model.NatMappingBehavior != "" && model.NatFilteringBehavior != "" {
 		if model.NatMappingBehavior == "inconclusive" || model.NatFilteringBehavior == "inconclusive" {
 			result = "Inconclusive"
+		} else if model.NatMappingBehavior == "endpoint independent (no NAT)" && model.NatFilteringBehavior == "endpoint independent" {
+			result = "Full Cone"
 		} else if model.NatMappingBehavior == "endpoint independent" && model.NatFilteringBehavior == "endpoint independent" {
 			result = "Full Cone"
 		} else if model.NatMappingBehavior == "endpoint independent" && model.NatFilteringBehavior == "address dependent" {

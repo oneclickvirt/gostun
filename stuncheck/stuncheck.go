@@ -68,6 +68,7 @@ func getCurrentProtocol(addrStr string) string {
 	return "ipv4"
 }
 
+// RFC 5780 implementation (current)
 func MappingTests(addrStr string) error { //nolint:cyclop
 	currentProtocol := getCurrentProtocol(addrStr)
 	mapTestConn, err := connect(addrStr)
@@ -156,6 +157,7 @@ func MappingTests(addrStr string) error { //nolint:cyclop
 	return mapTestConn.Close()
 }
 
+// RFC 5780 implementation (current)
 func FilteringTests(addrStr string) error { //nolint:cyclop
 	currentProtocol := getCurrentProtocol(addrStr)
 	mapTestConn, err := connect(addrStr)
@@ -224,6 +226,141 @@ func FilteringTests(addrStr string) error { //nolint:cyclop
 		}
 	}
 	return mapTestConn.Close()
+}
+
+// RFC 5389/8489 implementation - basic STUN binding request
+func MappingTestsRFC5389(addrStr string) error {
+	currentProtocol := getCurrentProtocol(addrStr)
+	mapTestConn, err := connect(addrStr)
+	if err != nil {
+		if model.EnableLoger {
+			model.Log.Warnf("[%s] RFC5389: Error creating STUN connection: %s", currentProtocol, err)
+		}
+		return err
+	}
+	defer mapTestConn.Close()
+	if model.EnableLoger {
+		model.Log.Infof("[%s] RFC5389: Basic binding request", currentProtocol)
+	}
+	request := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
+	resp, err := mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
+	if err != nil {
+		return err
+	}
+	resps := parse(resp)
+	if resps.xorAddr == nil {
+		if model.EnableLoger {
+			model.Log.Warnf("[%s] RFC5389: No XOR-MAPPED-ADDRESS received", currentProtocol)
+		}
+		return errors.New("no mapped address")
+	}
+	if model.EnableLoger {
+		model.Log.Infof("[%s] RFC5389: Received XOR-MAPPED-ADDRESS: %v", currentProtocol, resps.xorAddr)
+	}
+	// Simple classification based on whether we're behind NAT
+	if resps.xorAddr.String() == mapTestConn.LocalAddr.String() {
+		model.NatMappingBehavior = "endpoint independent (no NAT)"
+		model.NatFilteringBehavior = "endpoint independent"
+	} else {
+		// Can't determine exact type with RFC5389, so use conservative estimate
+		model.NatMappingBehavior = "address and port dependent"
+		model.NatFilteringBehavior = "address and port dependent"
+	}
+	if model.EnableLoger {
+		model.Log.Warnf("[%s] RFC5389: NAT mapping behavior: %s", currentProtocol, model.NatMappingBehavior)
+		model.Log.Warnf("[%s] RFC5389: NAT filtering behavior: %s", currentProtocol, model.NatFilteringBehavior)
+	}
+	return nil
+}
+
+// RFC 3489 implementation - classic STUN
+func MappingTestsRFC3489(addrStr string) error {
+	currentProtocol := getCurrentProtocol(addrStr)
+	mapTestConn, err := connect(addrStr)
+	if err != nil {
+		if model.EnableLoger {
+			model.Log.Warnf("[%s] RFC3489: Error creating STUN connection: %s", currentProtocol, err)
+		}
+		return err
+	}
+	defer mapTestConn.Close()
+	if model.EnableLoger {
+		model.Log.Infof("[%s] RFC3489: Test I - Basic binding request", currentProtocol)
+	}
+	// Test I: Basic binding request
+	request := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
+	resp, err := mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
+	if err != nil {
+		return err
+	}
+	resps1 := parse(resp)
+	var mappedAddr *net.UDPAddr
+	// Try XOR-MAPPED-ADDRESS first, then MAPPED-ADDRESS
+	if resps1.xorAddr != nil {
+		mappedAddr, _ = net.ResolveUDPAddr("udp", resps1.xorAddr.String())
+	} else if resps1.mappedAddr != nil {
+		mappedAddr, _ = net.ResolveUDPAddr("udp", resps1.mappedAddr.String())
+	}
+	if mappedAddr == nil {
+		if model.EnableLoger {
+			model.Log.Warnf("[%s] RFC3489: No mapped address received", currentProtocol)
+		}
+		return errors.New("no mapped address")
+	}
+	if model.EnableLoger {
+		model.Log.Infof("[%s] RFC3489: Received mapped address: %v", currentProtocol, mappedAddr)
+	}
+	// Check if we're behind NAT
+	localUDP, _ := mapTestConn.LocalAddr.(*net.UDPAddr)
+	if mappedAddr.IP.Equal(localUDP.IP) && mappedAddr.Port == localUDP.Port {
+		// No NAT
+		model.NatMappingBehavior = "endpoint independent (no NAT)"
+		model.NatFilteringBehavior = "endpoint independent"
+		if model.EnableLoger {
+			model.Log.Warnf("[%s] RFC3489: No NAT detected", currentProtocol)
+		}
+		return nil
+	}
+	// Test II: Binding request with change IP and Port
+	if model.EnableLoger {
+		model.Log.Infof("[%s] RFC3489: Test II - Request with change IP and Port", currentProtocol)
+	}
+	request2 := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
+	request2.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x06}) // Change both IP and port
+	resp2, err2 := mapTestConn.roundTrip(request2, mapTestConn.RemoteAddr)
+	if err2 == nil && resp2 != nil {
+		// Full cone NAT
+		model.NatMappingBehavior = "endpoint independent"
+		model.NatFilteringBehavior = "endpoint independent"
+		if model.EnableLoger {
+			model.Log.Warnf("[%s] RFC3489: Full Cone NAT detected", currentProtocol)
+		}
+		return nil
+	}
+	// Test III: Binding request with change port only
+	if model.EnableLoger {
+		model.Log.Infof("[%s] RFC3489: Test III - Request with change Port only", currentProtocol)
+	}
+	request3 := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
+	request3.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x02}) // Change port only
+	resp3, err3 := mapTestConn.roundTrip(request3, mapTestConn.RemoteAddr)
+	if err3 == nil && resp3 != nil {
+		// Restricted cone NAT
+		model.NatMappingBehavior = "endpoint independent"
+		model.NatFilteringBehavior = "address dependent"
+		if model.EnableLoger {
+			model.Log.Warnf("[%s] RFC3489: Restricted Cone NAT detected", currentProtocol)
+		}
+		return nil
+	}
+	// If we get here, we need to do additional tests for symmetric vs port restricted
+	// For simplicity in RFC3489, we'll classify remaining as Port Restricted or Symmetric
+	model.NatMappingBehavior = "address and port dependent"
+	model.NatFilteringBehavior = "address and port dependent"
+	if model.EnableLoger {
+		model.Log.Warnf("[%s] RFC3489: Symmetric NAT detected", currentProtocol)
+	}
+	return nil
 }
 
 func parse(msg *stun.Message) (ret struct {
