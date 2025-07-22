@@ -57,7 +57,7 @@ func getNetworkType(addrStr string) string {
 	return "udp4"
 }
 
-func MappingTests(addrStr string) error {
+func MappingTests(addrStr string) error { //nolint:cyclop
 	mapTestConn, err := connect(addrStr)
 	if err != nil {
 		if model.EnableLoger {
@@ -144,7 +144,7 @@ func MappingTests(addrStr string) error {
 	return mapTestConn.Close()
 }
 
-func FilteringTests(addrStr string) error {
+func FilteringTests(addrStr string) error { //nolint:cyclop
 	mapTestConn, err := connect(addrStr)
 	if err != nil {
 		if model.EnableLoger {
@@ -257,7 +257,7 @@ func parse(msg *stun.Message) (ret struct {
 			stun.AttrResponseOrigin,
 			stun.AttrMappedAddress,
 			stun.AttrSoftware:
-			break
+			break //nolint:staticcheck
 		default:
 			if model.EnableLoger {
 				model.Log.Debugf("\t%v (l=%v)", attr, attr.Length)
@@ -326,6 +326,7 @@ func (c *stunServerConn) roundTrip(msg *stun.Message, addr net.Addr) (*stun.Mess
 	}
 }
 
+// taken from https://github.com/pion/stun/blob/master/cmd/stun-traversal/main.go
 func listen(conn *net.UDPConn) (messages chan *stun.Message) {
 	messages = make(chan *stun.Message)
 	go func() {
