@@ -1,6 +1,6 @@
 module github.com/oneclickvirt/gostun
 
-go 1.22.4
+go 1.24.5
 
 require (
 	github.com/pion/logging v0.2.2
