@@ -63,6 +63,8 @@ gostun
 Usage: gostun [options]
   -e    Enable logging functionality (default true)
   -h    Display help information
+  -interface string
+        Bind to a specific network interface (e.g. eth0, eth1); empty means all interfaces
   -server string
         Specify STUN server address (default "stun.voipgate.com:3478")
   -timeout int

@@ -2,6 +2,7 @@ package stuncheck
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"time"
 
@@ -430,7 +431,14 @@ func connect(addrStr string) (*stunServerConn, error) {
 		}
 		return nil, err
 	}
-	c, err := net.ListenUDP(networkType, nil)
+	localAddr, err := getLocalAddrForInterface(networkType)
+	if err != nil {
+		if model.EnableLoger {
+			model.Log.Warnf("[%s] Error resolving interface address: %s", currentProtocol, err)
+		}
+		return nil, err
+	}
+	c, err := net.ListenUDP(networkType, localAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -445,6 +453,40 @@ func connect(addrStr string) (*stunServerConn, error) {
 		RemoteAddr:  addr,
 		messageChan: mChan,
 	}, nil
+}
+
+// getLocalAddrForInterface returns a *net.UDPAddr bound to the configured interface,
+// or nil if no interface is specified (preserving original behaviour).
+func getLocalAddrForInterface(networkType string) (*net.UDPAddr, error) {
+	if model.Interface == "" {
+		return nil, nil
+	}
+	iface, err := net.InterfaceByName(model.Interface)
+	if err != nil {
+		return nil, fmt.Errorf("interface %q not found: %w", model.Interface, err)
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get addresses for interface %q: %w", model.Interface, err)
+	}
+	wantIPv6 := networkType == "udp6"
+	for _, a := range addrs {
+		var ip net.IP
+		switch v := a.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+		if ip == nil || ip.IsLoopback() {
+			continue
+		}
+		isIPv6 := ip.To4() == nil
+		if isIPv6 == wantIPv6 {
+			return &net.UDPAddr{IP: ip}, nil
+		}
+	}
+	return nil, fmt.Errorf("no suitable address found on interface %q for network type %s", model.Interface, networkType)
 }
 
 func (c *stunServerConn) roundTrip(msg *stun.Message, addr net.Addr) (*stun.Message, error) {

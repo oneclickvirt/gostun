@@ -73,6 +73,35 @@ func tryRFCMethod(addrStr string, rfcMethod string) (bool, error) {
 	return false, nil
 }
 
+// normalizeBoolArgs converts space-separated bool flag values to the = form
+// that the standard flag package requires, e.g. "-e false" → "-e=false".
+// It also drops empty tokens that arise from multiple spaces.
+func normalizeBoolArgs(args []string) []string {
+	boolFlags := map[string]bool{
+		"h": true, "v": true, "e": true,
+	}
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "" {
+			continue
+		}
+		if strings.HasPrefix(arg, "-") && !strings.Contains(arg, "=") {
+			name := strings.TrimLeft(arg, "-")
+			if boolFlags[name] && i+1 < len(args) {
+				next := strings.ToLower(strings.TrimSpace(args[i+1]))
+				if next == "true" || next == "false" {
+					out = append(out, arg+"="+next)
+					i++
+					continue
+				}
+			}
+		}
+		out = append(out, arg)
+	}
+	return out
+}
+
 func main() {
 	var showVersion, help bool
 	gostunFlag := flag.NewFlagSet("gostun", flag.ContinueOnError)
@@ -83,7 +112,10 @@ func main() {
 	gostunFlag.StringVar(&model.AddrStr, "server", "stun.voipgate.com:3478", "Specify STUN server address")
 	gostunFlag.BoolVar(&model.EnableLoger, "e", true, "Enable logging functionality")
 	gostunFlag.StringVar(&model.IPVersion, "type", "ipv4", "Specify ip test version: ipv4, ipv6 or both")
-	gostunFlag.Parse(os.Args[1:])
+	gostunFlag.StringVar(&model.Interface, "interface", "", "Bind to a specific network interface (e.g. eth0, eth1); empty means all interfaces")
+	gostunFlag.Parse(normalizeBoolArgs(os.Args[1:]))
+	userSetFlags := make(map[string]bool)
+	gostunFlag.Visit(func(f *flag.Flag) { userSetFlags[f.Name] = true })
 	if help {
 		fmt.Printf("Usage: %s [options]\n", os.Args[0])
 		gostunFlag.PrintDefaults()
@@ -113,7 +145,7 @@ func main() {
 	}
 	var addrStrList []string
 	var originalIPVersion = model.IPVersion
-	if strings.Contains(os.Args[0], "-server") || model.AddrStr != "stun.voipgate.com:3478" {
+	if userSetFlags["server"] {
 		addrStrList = []string{model.AddrStr}
 	} else {
 		addrStrList = model.GetDefaultServers(model.IPVersion)
