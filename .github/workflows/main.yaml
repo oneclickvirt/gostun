@@ -15,17 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
-      
+      uses: actions/checkout@v4
+
     - name: Set up Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5
       with:
         go-version: 'stable'
-      
+
     - name: Test on Default Platform
       run: |
         go test -v ./...
-    
+
     - name: Delete Existing Release Assets
       run: |
         release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/oneclickvirt/gostun/releases/tags/output" | jq -r '.id')
@@ -41,39 +41,8 @@ jobs:
     name: Release Go Binary
     runs-on: ubuntu-latest
     needs: build
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 'stable'
-
-    - name: Build and Release
-      run: |
-        mkdir -p bin
-        cd cmd
-        CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build \
-          -o ../bin/gostun-${{ matrix.goos }}-${{ matrix.goarch }} \
-          -v \
-          -ldflags="-extldflags=-static -s -w" \
-          -trimpath \
-          .
-    - name: Upload New Assets
-      run: |
-        release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/oneclickvirt/gostun/releases/tags/output" | jq -r '.id')
-        echo "Uploading new assets to release..."
-        for file in ./bin/*; do
-          echo "Uploading $file to release..."
-          curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary @"$file" \
-            "https://uploads.github.com/repos/oneclickvirt/gostun/releases/$release_id/assets?name=$(basename "$file")"
-          rm -rf $file
-        done
-
     strategy:
+      fail-fast: false
       matrix:
         goos: [windows, freebsd, openbsd, linux, darwin]
         goarch: [amd64, 386]
@@ -133,3 +102,48 @@ jobs:
           # - goos: linux
           #   goarch: arm
           #   goarm: 5
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 'stable'
+
+    - name: Build and Release
+      run: |
+        mkdir -p bin
+        cd cmd
+        EXT=""
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          EXT=".exe"
+        fi
+        GOARM_VAL="${{ matrix.goarm }}"
+        OUTPUT_SUFFIX="${{ matrix.goarch }}"
+        if [ -n "$GOARM_VAL" ]; then
+          OUTPUT_SUFFIX="${OUTPUT_SUFFIX}v${GOARM_VAL}"
+        fi
+        LDFLAGS="-s -w"
+        if [ "${{ matrix.goos }}" != "windows" ]; then
+          LDFLAGS="-extldflags=-static -s -w"
+        fi
+        CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} GOARM=${GOARM_VAL} go build \
+          -o "../bin/gostun-${{ matrix.goos }}-${OUTPUT_SUFFIX}${EXT}" \
+          -v \
+          -ldflags="${LDFLAGS}" \
+          -trimpath \
+          .
+
+    - name: Upload New Assets
+      run: |
+        release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/oneclickvirt/gostun/releases/tags/output" | jq -r '.id')
+        echo "Uploading new assets to release..."
+        for file in ./bin/*; do
+          echo "Uploading $file to release..."
+          curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"$file" \
+            "https://uploads.github.com/repos/oneclickvirt/gostun/releases/$release_id/assets?name=$(basename "$file")"
+          rm -rf $file
+        done
