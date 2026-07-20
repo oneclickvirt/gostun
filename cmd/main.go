@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/oneclickvirt/gostun/model"
 	"github.com/oneclickvirt/gostun/stuncheck"
@@ -78,7 +82,7 @@ func tryRFCMethod(addrStr string, rfcMethod string) (bool, error) {
 // It also drops empty tokens that arise from multiple spaces.
 func normalizeBoolArgs(args []string) []string {
 	boolFlags := map[string]bool{
-		"h": true, "v": true, "e": true,
+		"h": true, "v": true, "e": true, "json": true, "structured": true,
 	}
 	out := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
@@ -103,7 +107,8 @@ func normalizeBoolArgs(args []string) []string {
 }
 
 func main() {
-	var showVersion, help bool
+	var showVersion, help, structured bool
+	var concurrency int
 	gostunFlag := flag.NewFlagSet("gostun", flag.ContinueOnError)
 	gostunFlag.BoolVar(&help, "h", false, "Display help information")
 	gostunFlag.BoolVar(&showVersion, "v", false, "Display version information")
@@ -113,7 +118,12 @@ func main() {
 	gostunFlag.BoolVar(&model.EnableLoger, "e", true, "Enable logging functionality")
 	gostunFlag.StringVar(&model.IPVersion, "type", "ipv4", "Specify ip test version: ipv4, ipv6 or both")
 	gostunFlag.StringVar(&model.Interface, "interface", "", "Bind to a specific network interface (e.g. eth0, eth1); empty means all interfaces")
-	gostunFlag.Parse(normalizeBoolArgs(os.Args[1:]))
+	gostunFlag.BoolVar(&structured, "json", false, "Output structured NAT summary as JSON")
+	gostunFlag.BoolVar(&structured, "structured", false, "Alias for -json")
+	gostunFlag.IntVar(&concurrency, "concurrency", 0, "Structured mode maximum concurrent STUN probes")
+	if err := gostunFlag.Parse(normalizeBoolArgs(os.Args[1:])); err != nil {
+		os.Exit(2)
+	}
 	userSetFlags := make(map[string]bool)
 	gostunFlag.Visit(func(f *flag.Flag) { userSetFlags[f.Name] = true })
 	if help {
@@ -121,14 +131,47 @@ func main() {
 		gostunFlag.PrintDefaults()
 		return
 	}
+	if showVersion {
+		go func() {
+			http.Get("https://hits.spiritlhl.net/gostun.svg?action=hit&title=Hits&title_bg=%23555555&count_bg=%230eecf8&edge_flat=false")
+		}()
+		fmt.Println("Repo:", "https://github.com/oneclickvirt/gostun")
+		fmt.Println(model.GoStunVersion)
+		return
+	}
+	if structured {
+		if model.Timeout <= 0 || concurrency < 0 {
+			fmt.Fprintln(os.Stderr, "structured timeout must be positive and concurrency cannot be negative")
+			os.Exit(2)
+		}
+		servers := []string{}
+		if userSetFlags["server"] && strings.TrimSpace(model.AddrStr) != "" {
+			for _, server := range strings.Split(model.AddrStr, ",") {
+				if server = strings.TrimSpace(server); server != "" {
+					servers = append(servers, server)
+				}
+			}
+		}
+		config := stuncheck.ProbeConfig{
+			Servers:       servers,
+			IPVersion:     model.IPVersion,
+			Timeout:       time.Duration(model.Timeout) * time.Second,
+			MaxConcurrent: concurrency,
+		}
+		if err := writeStructuredSummary(context.Background(), os.Stdout, config, stuncheck.ProbeNAT); err != nil {
+			fmt.Fprintf(os.Stderr, "structured NAT probe failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if userSetFlags["concurrency"] {
+		fmt.Fprintln(os.Stderr, "-concurrency requires -json or -structured")
+		os.Exit(2)
+	}
 	go func() {
 		http.Get("https://hits.spiritlhl.net/gostun.svg?action=hit&title=Hits&title_bg=%23555555&count_bg=%230eecf8&edge_flat=false")
 	}()
 	fmt.Println("Repo:", "https://github.com/oneclickvirt/gostun")
-	if showVersion {
-		fmt.Println(model.GoStunVersion)
-		return
-	}
 	if model.EnableLoger {
 		var logLevel logging.LogLevel
 		switch model.Verbose {
@@ -195,4 +238,14 @@ func main() {
 	model.IPVersion = originalIPVersion
 	res := stuncheck.CheckType()
 	fmt.Printf("NAT Type: %s\n", res)
+}
+
+func writeStructuredSummary(ctx context.Context, output io.Writer, config stuncheck.ProbeConfig, probe func(context.Context, stuncheck.ProbeConfig) stuncheck.NATSummary) error {
+	if probe == nil {
+		return fmt.Errorf("structured NAT probe is nil")
+	}
+	summary := probe(ctx, config)
+	encoder := json.NewEncoder(output)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(summary)
 }
