@@ -1,6 +1,7 @@
 package stuncheck
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -69,164 +70,24 @@ func getCurrentProtocol(addrStr string) string {
 	return "ipv4"
 }
 
-// RFC 5780 implementation (current)
-func MappingTests(addrStr string) error { //nolint:cyclop
-	currentProtocol := getCurrentProtocol(addrStr)
-	mapTestConn, err := connect(addrStr)
-	if err != nil {
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] Error creating STUN connection: %s", currentProtocol, err)
-		}
-		return err
+// MappingTests keeps the legacy API while delegating RFC 5780 I/O to the
+// instance-scoped implementation used by ProbeNAT.
+func MappingTests(addrStr string) error {
+	behavior, err := probeRFC5780Mapping(context.Background(), addrStr, getCurrentProtocol(addrStr), time.Duration(model.Timeout)*time.Second)
+	if err == nil {
+		model.NatMappingBehavior = behavior
 	}
-	if model.EnableLoger {
-		model.Log.Infof("[%s] Mapping Test I: Regular binding request", currentProtocol)
-	}
-	request := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	resp, err := mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
-	if err != nil {
-		return err
-	}
-	resps1 := parse(resp)
-	if resps1.xorAddr == nil || resps1.otherAddr == nil {
-		if model.EnableLoger {
-			model.Log.Infof("[%s] Error: NAT discovery feature not supported by this server", currentProtocol)
-		}
-		return errNoOtherAddress
-	}
-	networkType := getNetworkType(addrStr)
-	addr, err := net.ResolveUDPAddr(networkType, resps1.otherAddr.String())
-	if err != nil {
-		if model.EnableLoger {
-			model.Log.Infof("[%s] Failed resolving OTHER-ADDRESS: %v", currentProtocol, resps1.otherAddr)
-		}
-		return err
-	}
-	mapTestConn.OtherAddr = addr
-	if model.EnableLoger {
-		model.Log.Infof("[%s] Received XOR-MAPPED-ADDRESS: %v", currentProtocol, resps1.xorAddr)
-	}
-	if resps1.xorAddr.String() == mapTestConn.LocalAddr.String() {
-		model.NatMappingBehavior = "endpoint independent (no NAT)"
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] => NAT mapping behavior: endpoint independent (no NAT)", currentProtocol)
-		}
-		return nil
-	}
-	if model.EnableLoger {
-		model.Log.Infof("[%s] Mapping Test II: Send binding request to the other address but primary port", currentProtocol)
-	}
-	oaddr := *mapTestConn.OtherAddr
-	oaddr.Port = mapTestConn.RemoteAddr.Port
-	resp, err = mapTestConn.roundTrip(request, &oaddr)
-	if err != nil {
-		return err
-	}
-	resps2 := parse(resp)
-	if model.EnableLoger {
-		model.Log.Infof("[%s] Received XOR-MAPPED-ADDRESS: %v", currentProtocol, resps2.xorAddr)
-	}
-	if resps2.xorAddr.String() == resps1.xorAddr.String() {
-		model.NatMappingBehavior = "endpoint independent"
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] => NAT mapping behavior: endpoint independent", currentProtocol)
-		}
-		return nil
-	}
-	if model.EnableLoger {
-		model.Log.Infof("[%s] Mapping Test III: Send binding request to the other address and port", currentProtocol)
-	}
-	resp, err = mapTestConn.roundTrip(request, mapTestConn.OtherAddr)
-	if err != nil {
-		return err
-	}
-	resps3 := parse(resp)
-	if model.EnableLoger {
-		model.Log.Infof("[%s] Received XOR-MAPPED-ADDRESS: %v", currentProtocol, resps3.xorAddr)
-	}
-	if resps3.xorAddr.String() == resps2.xorAddr.String() {
-		model.NatMappingBehavior = "address dependent"
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] => NAT mapping behavior: address dependent", currentProtocol)
-		}
-	} else {
-		model.NatMappingBehavior = "address and port dependent"
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] => NAT mapping behavior: address and port dependent", currentProtocol)
-		}
-	}
-	return mapTestConn.Close()
+	return err
 }
 
-// RFC 5780 implementation (current)
-func FilteringTests(addrStr string) error { //nolint:cyclop
-	currentProtocol := getCurrentProtocol(addrStr)
-	mapTestConn, err := connect(addrStr)
-	if err != nil {
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] Error creating STUN connection: %s", currentProtocol, err)
-		}
-		return err
-	}
-	if model.EnableLoger {
-		model.Log.Infof("[%s] Filtering Test I: Regular binding request", currentProtocol)
-	}
-	request := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	resp, err := mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
-	if err != nil || errors.Is(err, errTimedOut) {
-		return err
-	}
-	resps := parse(resp)
-	if resps.xorAddr == nil || resps.otherAddr == nil {
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] Error: NAT discovery feature not supported by this server", currentProtocol)
-		}
-		return errNoOtherAddress
-	}
-	networkType := getNetworkType(addrStr)
-	addr, err := net.ResolveUDPAddr(networkType, resps.otherAddr.String())
-	if err != nil {
-		if model.EnableLoger {
-			model.Log.Infof("[%s] Failed resolving OTHER-ADDRESS: %v", currentProtocol, resps.otherAddr)
-		}
-		return err
-	}
-	mapTestConn.OtherAddr = addr
-	if model.EnableLoger {
-		model.Log.Infof("[%s] Filtering Test II: Request to change both IP and port", currentProtocol)
-	}
-	request = stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	request.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x06})
-	resp, err = mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
+// FilteringTests keeps the legacy API while delegating RFC 5780 I/O to the
+// instance-scoped implementation used by ProbeNAT.
+func FilteringTests(addrStr string) error {
+	behavior, err := probeRFC5780Filtering(context.Background(), addrStr, getCurrentProtocol(addrStr), time.Duration(model.Timeout)*time.Second)
 	if err == nil {
-		parse(resp)
-		model.NatFilteringBehavior = "endpoint independent"
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] => NAT filtering behavior: endpoint independent", currentProtocol)
-		}
-		return nil
-	} else if !errors.Is(err, errTimedOut) {
-		return err
+		model.NatFilteringBehavior = behavior
 	}
-	if model.EnableLoger {
-		model.Log.Infof("[%s] Filtering Test III: Request to change port only", currentProtocol)
-	}
-	request = stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-	request.Add(stun.AttrChangeRequest, []byte{0x00, 0x00, 0x00, 0x02})
-	resp, err = mapTestConn.roundTrip(request, mapTestConn.RemoteAddr)
-	if err == nil {
-		parse(resp)
-		model.NatFilteringBehavior = "address dependent"
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] => NAT filtering behavior: address dependent", currentProtocol)
-		}
-	} else if errors.Is(err, errTimedOut) {
-		model.NatFilteringBehavior = "address and port dependent"
-		if model.EnableLoger {
-			model.Log.Warnf("[%s] => NAT filtering behavior: address and port dependent", currentProtocol)
-		}
-	}
-	return mapTestConn.Close()
+	return err
 }
 
 // RFC 5389/8489 implementation - basic STUN binding request

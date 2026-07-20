@@ -9,22 +9,26 @@ import (
 // CheckType
 // Summarize the NAT type
 func CheckType() string {
+	return checkType(model.NatMappingBehavior, model.NatFilteringBehavior)
+}
+
+func checkType(mappingBehavior, filteringBehavior string) string {
 	var result string
-	if model.NatMappingBehavior != "" && model.NatFilteringBehavior != "" {
-		if model.NatMappingBehavior == "inconclusive" || model.NatFilteringBehavior == "inconclusive" {
+	if mappingBehavior != "" && filteringBehavior != "" {
+		if mappingBehavior == "inconclusive" || filteringBehavior == "inconclusive" {
 			result = "Inconclusive"
-		} else if model.NatMappingBehavior == "endpoint independent (no NAT)" && model.NatFilteringBehavior == "endpoint independent" {
+		} else if mappingBehavior == "endpoint independent (no NAT)" && filteringBehavior == "endpoint independent" {
 			result = "Full Cone"
-		} else if model.NatMappingBehavior == "endpoint independent" && model.NatFilteringBehavior == "endpoint independent" {
+		} else if mappingBehavior == "endpoint independent" && filteringBehavior == "endpoint independent" {
 			result = "Full Cone"
-		} else if model.NatMappingBehavior == "endpoint independent" && model.NatFilteringBehavior == "address dependent" {
+		} else if mappingBehavior == "endpoint independent" && filteringBehavior == "address dependent" {
 			result = "Restricted Cone"
-		} else if model.NatMappingBehavior == "endpoint independent" && model.NatFilteringBehavior == "address and port dependent" {
+		} else if mappingBehavior == "endpoint independent" && filteringBehavior == "address and port dependent" {
 			result = "Port Restricted Cone"
-		} else if model.NatMappingBehavior == "address and port dependent" && model.NatFilteringBehavior == "address and port dependent" {
+		} else if mappingBehavior == "address and port dependent" && filteringBehavior == "address and port dependent" {
 			result = "Symmetric"
 		} else {
-			result = fmt.Sprintf("%v[NatMappingBehavior] %v[NatFilteringBehavior]\n", model.NatMappingBehavior, model.NatFilteringBehavior)
+			result = fmt.Sprintf("%v[NatMappingBehavior] %v[NatFilteringBehavior]\n", mappingBehavior, filteringBehavior)
 		}
 	} else {
 		result = "Inconclusive"
