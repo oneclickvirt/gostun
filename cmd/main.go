@@ -159,7 +159,7 @@ func main() {
 			MaxConcurrent: concurrency,
 		}
 		if err := writeStructuredSummary(context.Background(), os.Stdout, config, stuncheck.ProbeNAT); err != nil {
-			fmt.Fprintf(os.Stderr, "structured NAT probe failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "structured NAT probe failed: %s\n", sanitizeErrorText(err.Error()))
 			os.Exit(1)
 		}
 		return
@@ -237,7 +237,7 @@ func main() {
 	}
 	model.IPVersion = originalIPVersion
 	res := stuncheck.CheckType()
-	fmt.Printf("NAT Type: %s\n", res)
+	fmt.Printf("%s\n", indentLegacyOutput("NAT Type: "+res))
 }
 
 func writeStructuredSummary(ctx context.Context, output io.Writer, config stuncheck.ProbeConfig, probe func(context.Context, stuncheck.ProbeConfig) stuncheck.NATSummary) error {
