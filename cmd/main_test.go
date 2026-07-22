@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oneclickvirt/gostun/model"
 	"github.com/oneclickvirt/gostun/stuncheck"
 )
 
@@ -16,6 +17,48 @@ func TestMain(t *testing.T) {
 	os.Args = []string{"gostun", "-h"}
 	defer func() { os.Args = oldArgs }()
 	main()
+}
+
+func TestValidateCLIOptionsRejectsInvalidOrIgnoredValues(t *testing.T) {
+	originalType, originalTimeout, originalVerbose := model.IPVersion, model.Timeout, model.Verbose
+	originalServer, originalInterface := model.AddrStr, model.Interface
+	defer func() {
+		model.IPVersion, model.Timeout, model.Verbose = originalType, originalTimeout, originalVerbose
+		model.AddrStr, model.Interface = originalServer, originalInterface
+	}()
+	setDefaults := func() {
+		model.IPVersion, model.Timeout, model.Verbose = "ipv4", 3, 0
+		model.AddrStr, model.Interface = "stun.example:3478", ""
+	}
+	setDefaults()
+	if err := validateCLIOptions(nil, true, 2, map[string]bool{"concurrency": true, "server": true}); err != nil {
+		t.Fatalf("valid structured options failed: %v", err)
+	}
+	tests := []func() error{
+		func() error { setDefaults(); model.IPVersion = "ipx"; return validateCLIOptions(nil, true, 0, nil) },
+		func() error { setDefaults(); model.Timeout = 0; return validateCLIOptions(nil, false, 0, nil) },
+		func() error { setDefaults(); model.Verbose = 4; return validateCLIOptions(nil, false, 0, nil) },
+		func() error {
+			setDefaults()
+			return validateCLIOptions(nil, false, 2, map[string]bool{"concurrency": true})
+		},
+		func() error {
+			setDefaults()
+			return validateCLIOptions(nil, true, 0, map[string]bool{"concurrency": true})
+		},
+		func() error { setDefaults(); return validateCLIOptions(nil, true, 0, map[string]bool{"e": true}) },
+		func() error {
+			setDefaults()
+			model.AddrStr = "https://private.example/key"
+			return validateCLIOptions(nil, true, 0, map[string]bool{"server": true})
+		},
+		func() error { setDefaults(); return validateCLIOptions([]string{"extra"}, false, 0, nil) },
+	}
+	for index, run := range tests {
+		if err := run(); err == nil {
+			t.Fatalf("invalid case %d was accepted", index)
+		}
+	}
 }
 
 func TestNormalizeBoolArgsSupportsStructuredFlags(t *testing.T) {

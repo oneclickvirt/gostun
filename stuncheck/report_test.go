@@ -2,8 +2,8 @@ package stuncheck
 
 import (
 	"context"
+	"fmt"
 	"net"
-	"strings"
 	"testing"
 	"time"
 
@@ -131,8 +131,15 @@ func TestProbeNATExplicitUnsupported(t *testing.T) {
 	if summary.Status != CapabilityUnsupported || summary.Results[0].Status != CapabilityUnsupported {
 		t.Fatalf("expected unsupported result: %+v", summary)
 	}
-	if !strings.Contains(summary.Results[0].Error, "does not provide a mapped address") {
+	if summary.Results[0].Error != "unsupported" {
 		t.Fatalf("unexpected unsupported error: %q", summary.Results[0].Error)
+	}
+}
+
+func TestBuildNATReportDoesNotExposeRawProbeError(t *testing.T) {
+	report := BuildNATReport("fixture:3478", "", "", CapabilityError, fmt.Errorf("dial https://private.example/probe?key=secret from /private/path"))
+	if report.Error != "probe_failed" {
+		t.Fatalf("raw probe error was retained: %+v", report)
 	}
 }
 

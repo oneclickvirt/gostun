@@ -104,7 +104,7 @@ func BuildNATReport(server, localAddress, mappedAddress string, hairpin Capabili
 	}
 	if probeErr != nil {
 		report.Status = classifyProbeError(probeErr)
-		report.Error = probeErr.Error()
+		report.Error = stableProbeError(probeErr)
 		if report.MappingBehavior == "" && report.FilteringBehavior == "" {
 			report.PortPreservation = report.Status
 		}
@@ -150,7 +150,7 @@ func ProbeNAT(ctx context.Context, config ProbeConfig) NATSummary {
 	if err != nil {
 		return NATSummary{
 			SchemaVersion: "goecs.stun/v1", IPVersion: config.IPVersion,
-			Status: CapabilityUnsupported, Error: err.Error(),
+			Status: CapabilityUnsupported, Error: "unsupported_ip_version",
 			MappingConsistency:          CapabilityUnsupported,
 			MappedEndpointConsistency:   CapabilityUnsupported,
 			PortPreservationConsistency: CapabilityUnsupported,
@@ -308,7 +308,7 @@ func probeOne(ctx context.Context, server, family string, timeout time.Duration)
 		}
 	}
 	if probeErr != nil {
-		report.Error = probeErr.Error()
+		report.Error = stableProbeError(probeErr)
 		if !errors.Is(probeErr, errSTUNHairpinTimeout) || mapped == "" {
 			report.Status = classifyProbeError(probeErr)
 			if mapped == "" {
@@ -331,7 +331,7 @@ func probeOne(ctx context.Context, server, family string, timeout time.Duration)
 		if report.Status == CapabilityAvailable || behaviorStatus == CapabilityError {
 			report.Status = behaviorStatus
 		}
-		behaviorError := fmt.Sprintf("RFC 5780 behavior probe: %v", behavior.err)
+		behaviorError := stableProbeError(behavior.err)
 		if report.Error == "" {
 			report.Error = behaviorError
 		} else {
@@ -348,7 +348,24 @@ func canceledReport(server, family string, err error) NATReport {
 		SchemaVersion: "goecs.stun/v1", IPVersion: family, Server: server,
 		Status: status, NATType: "Inconclusive", MappingBehavior: "unsupported",
 		FilteringBehavior: "unsupported", PortPreservation: status, Hairpin: status,
-		Error: err.Error(),
+		Error: stableProbeError(err),
+	}
+}
+
+func stableProbeError(err error) string {
+	if err == nil {
+		return ""
+	}
+	if errors.Is(err, context.Canceled) {
+		return "canceled"
+	}
+	switch classifyProbeError(err) {
+	case CapabilityTimeout:
+		return "timeout"
+	case CapabilityUnsupported:
+		return "unsupported"
+	default:
+		return "probe_failed"
 	}
 }
 

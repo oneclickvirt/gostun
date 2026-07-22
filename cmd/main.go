@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -139,11 +140,12 @@ func main() {
 		fmt.Println(model.GoStunVersion)
 		return
 	}
+	model.IPVersion = strings.ToLower(strings.TrimSpace(model.IPVersion))
+	if err := validateCLIOptions(gostunFlag.Args(), structured, concurrency, userSetFlags); err != nil {
+		fmt.Fprintln(os.Stderr, sanitizeErrorText(err.Error()))
+		os.Exit(2)
+	}
 	if structured {
-		if model.Timeout <= 0 || concurrency < 0 {
-			fmt.Fprintln(os.Stderr, "structured timeout must be positive and concurrency cannot be negative")
-			os.Exit(2)
-		}
 		servers := []string{}
 		if userSetFlags["server"] && strings.TrimSpace(model.AddrStr) != "" {
 			for _, server := range strings.Split(model.AddrStr, ",") {
@@ -163,10 +165,6 @@ func main() {
 			os.Exit(1)
 		}
 		return
-	}
-	if userSetFlags["concurrency"] {
-		fmt.Fprintln(os.Stderr, "-concurrency requires -json or -structured")
-		os.Exit(2)
 	}
 	go func() {
 		http.Get("https://hits.spiritlhl.net/gostun.svg?action=hit&title=Hits&title_bg=%23555555&count_bg=%230eecf8&edge_flat=false")
@@ -238,6 +236,52 @@ func main() {
 	model.IPVersion = originalIPVersion
 	res := stuncheck.CheckType()
 	fmt.Printf("%s\n", indentLegacyOutput("NAT Type: "+res))
+}
+
+func validateCLIOptions(positional []string, structured bool, concurrency int, userSet map[string]bool) error {
+	if len(positional) != 0 {
+		return fmt.Errorf("unexpected positional arguments: %s", strings.Join(positional, " "))
+	}
+	if model.IPVersion != "ipv4" && model.IPVersion != "ipv6" && model.IPVersion != "both" {
+		return fmt.Errorf("-type only supports ipv4, ipv6, or both")
+	}
+	if model.Timeout <= 0 {
+		return fmt.Errorf("-timeout must be positive")
+	}
+	if model.Verbose < 0 || model.Verbose > 3 {
+		return fmt.Errorf("-verbose must be between 0 and 3")
+	}
+	if concurrency < 0 || (userSet["concurrency"] && concurrency == 0) {
+		return fmt.Errorf("-concurrency must be positive when specified")
+	}
+	if userSet["concurrency"] && !structured {
+		return fmt.Errorf("-concurrency requires -json or -structured")
+	}
+	if structured && (userSet["verbose"] || userSet["e"]) {
+		return fmt.Errorf("-verbose and -e are not used with structured output")
+	}
+	if userSet["interface"] && strings.TrimSpace(model.Interface) == "" {
+		return fmt.Errorf("-interface must not be empty when specified")
+	}
+	if userSet["server"] {
+		servers := []string{model.AddrStr}
+		if structured {
+			servers = strings.Split(model.AddrStr, ",")
+		} else if strings.Contains(model.AddrStr, ",") {
+			return fmt.Errorf("multiple -server values require structured output")
+		}
+		for _, server := range servers {
+			server = strings.TrimSpace(server)
+			host, port, err := net.SplitHostPort(server)
+			if err != nil || strings.TrimSpace(host) == "" || strings.TrimSpace(port) == "" {
+				return fmt.Errorf("invalid STUN server address")
+			}
+			if _, err := net.LookupPort("udp", port); err != nil {
+				return fmt.Errorf("invalid STUN server address")
+			}
+		}
+	}
+	return nil
 }
 
 func writeStructuredSummary(ctx context.Context, output io.Writer, config stuncheck.ProbeConfig, probe func(context.Context, stuncheck.ProbeConfig) stuncheck.NATSummary) error {

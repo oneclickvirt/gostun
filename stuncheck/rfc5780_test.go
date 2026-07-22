@@ -3,7 +3,6 @@ package stuncheck
 import (
 	"context"
 	"net"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -101,8 +100,8 @@ func TestProbeNATRFC5780ContextCancellation(t *testing.T) {
 	if report.Status != CapabilityTimeout || report.MappingBehavior != "endpoint independent" || report.FilteringBehavior != behaviorTimeout {
 		t.Fatalf("context cancellation must not be interpreted as restrictive filtering: %+v", report)
 	}
-	if !strings.Contains(report.Error, context.DeadlineExceeded.Error()) {
-		t.Fatalf("missing context error: %+v", report)
+	if report.Error != "timeout" {
+		t.Fatalf("context error was not stabilized: %+v", report)
 	}
 	if time.Since(started) > time.Second {
 		t.Fatalf("context cancellation was not prompt: %s", time.Since(started))
