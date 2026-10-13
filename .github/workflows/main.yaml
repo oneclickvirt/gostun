@@ -1,17 +1,6 @@
 name: Build and Release
-
-on:
-  # push:
-  #   branches: [ main ]
-  # pull_request:
-  #   branches: [ main ]
-  # release:
-  #   types: [published]
-  workflow_dispatch:
-
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
     name: Build and Test
@@ -19,27 +8,18 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version: 'stable'
-
+        go-version: stable
     - name: Test on Default Platform
       run: |
         go test -v ./...
-
-    - name: Delete Existing Release Assets
+    - name: Preserve the last published assets until new binaries are built
       run: |
-        release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/oneclickvirt/gostun/releases/tags/output" | jq -r '.id')
-        echo "Deleting existing release assets..."
-        assets=$(curl -s -H "Accept: application/vnd.github.v3+json" "https://api.github.com/repos/oneclickvirt/gostun/releases/$release_id/assets" | jq -r '.[] | .id')
-        for asset in $assets; do
-          echo "Deleting asset with ID: $asset"
-          curl -X DELETE -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/oneclickvirt/gostun/releases/assets/$asset"
-        done
-        sleep 60
-
+        echo "Existing release assets are retained until each validated replacement is uploaded."
+    env:
+      GOPROXY: https://proxy.golang.org|direct
   release-binary:
     name: Release Go Binary
     runs-on: ubuntu-latest
@@ -47,70 +27,69 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        goos: [windows, freebsd, openbsd, linux, darwin]
-        goarch: [amd64, 386]
+        goos:
+        - windows
+        - freebsd
+        - openbsd
+        - linux
+        - darwin
+        goarch:
+        - amd64
+        - 386
         exclude:
-          - goarch: 386
-            goos: darwin
+        - goarch: 386
+          goos: darwin
         include:
-          - goos: windows
-            goarch: 386
-          - goos: windows
-            goarch: amd64
-          - goos: windows
-            goarch: arm64
-          - goos: darwin
-            goarch: arm64
-          - goos: linux
-            goarch: arm
-            goarm: 7
-          - goos: linux
-            goarch: arm64
-          - goos: linux
-            goarch: riscv64
-          - goos: linux
-            goarch: mips64
-          - goos: linux
-            goarch: mips64le
-          - goos: linux
-            goarch: mipsle
-          - goos: linux
-            goarch: mips
-          - goos: linux
-            goarch: ppc64
-          - goos: linux
-            goarch: ppc64le
-          - goos: freebsd
-            goarch: arm64
-          - goos: freebsd
-            goarch: arm
-            goarm: 7
-          - goos: openbsd
-            goarch: arm64
-          - goos: openbsd
-            goarch: arm
-            goarm: 7
-          # - goos: linux
-          #   goarch: mipsle
-          #   gomips: softfloat
-          # - goos: linux
-          #   goarch: mips
-          #   gomips: softfloat
-          # - goos: linux
-          #   goarch: arm
-          #   goarm: 6
-          # - goos: linux
-          #   goarch: arm
-          #   goarm: 5
+        - goos: windows
+          goarch: 386
+        - goos: windows
+          goarch: amd64
+        - goos: windows
+          goarch: arm64
+        - goos: darwin
+          goarch: arm64
+        - goos: linux
+          goarch: arm
+          goarm: 7
+        - goos: linux
+          goarch: arm64
+        - goos: linux
+          goarch: riscv64
+        - goos: linux
+          goarch: mips64
+        - goos: linux
+          goarch: mips64le
+        - goos: linux
+          goarch: mipsle
+        - goos: linux
+          goarch: mips
+        - goos: linux
+          goarch: ppc64
+        - goos: linux
+          goarch: ppc64le
+        - goos: freebsd
+          goarch: arm64
+        - goos: freebsd
+          goarch: arm
+          goarm: 7
+        - goos: openbsd
+          goarch: arm64
+        - goos: openbsd
+          goarch: arm
+          goarm: 7
     steps:
+    - name: Load trusted network recovery helpers
+      shell: bash
+      run: |
+        set -euo pipefail
+        curl --fail --silent --show-error --location --connect-timeout 15 --max-time 90 --retry 3 --retry-max-time 180 --retry-connrefused "https://raw.githubusercontent.com/oneclickvirt/gostun/main/.github/scripts/ci_network.sh" -o "$RUNNER_TEMP/ci-network.sh"
+        curl --fail --silent --show-error --location --connect-timeout 15 --max-time 90 --retry 3 --retry-max-time 180 --retry-connrefused "https://raw.githubusercontent.com/oneclickvirt/gostun/main/.github/scripts/release_assets.py" -o "$RUNNER_TEMP/ci-release-assets.py"
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version: 'stable'
-
+        go-version: stable
     - name: Build and Release
       run: |
         mkdir -p bin
@@ -134,16 +113,28 @@ jobs:
           -ldflags="${LDFLAGS}" \
           -trimpath \
           .
-
     - name: Upload New Assets
       run: |
-        release_id=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/oneclickvirt/gostun/releases/tags/output" | jq -r '.id')
-        echo "Uploading new assets to release..."
-        for file in ./bin/*; do
-          echo "Uploading $file to release..."
-          curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary @"$file" \
-            "https://uploads.github.com/repos/oneclickvirt/gostun/releases/$release_id/assets?name=$(basename "$file")"
-          rm -rf $file
+        source "$RUNNER_TEMP/ci-network.sh"
+        set -euo pipefail
+        shopt -s nullglob
+        files=(./bin/*)
+        [[ ${#files[@]} -gt 0 ]] || { echo "No release binaries were built." >&2; exit 1; }
+        gh release view output --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+          gh release create output --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title output --notes "Validated component binaries"
+        for file in "${files[@]}"; do
+          [[ -f "$file" && -s "$file" ]] || { echo "Invalid release binary." >&2; exit 1; }
         done
+        python3 "$RUNNER_TEMP/ci-release-assets.py" output "${files[@]}"
+      env:
+        GH_TOKEN: ${{ github.token }}
+      shell: bash
+    env:
+      GOPROXY: https://proxy.golang.org|direct
+    concurrency:
+      group: release-assets-${{ github.repository }}-${{ matrix.goos }}-${{ matrix.goarch }}
+      cancel-in-progress: false
+'on':
+  workflow_dispatch: null
+permissions:
+  contents: write

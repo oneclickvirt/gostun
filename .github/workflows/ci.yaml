@@ -1,48 +1,48 @@
 name: CI
-
-on:
-  workflow_dispatch:
-
 jobs:
   test:
     strategy:
       matrix:
-        go: [ '1.22.x' ]
-        os: [ ubuntu-latest ]
+        go:
+        - 1.22.x
+        os:
+        - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: ${{ matrix.go }}
-      - name: Test
-        run: go test ./... -coverprofile=coverage.txt
-      - name: Create Tag
-        if: success() # 仅在测试成功时运行
-        run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
-          TAG="v0.0.7-$(date +'%Y%m%d%H%M%S')"
-          git tag $TAG
-          git push origin $TAG
-          echo "TAG=$TAG" >> $GITHUB_ENV
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Update README.md
-        if: success() # 仅在测试成功后运行
-        run: |
-          sed -i "s|go get github.com/oneclickvirt/gostun@.*|go get github.com/oneclickvirt/gostun@${TAG}|" README.md
-        env:
-          TAG: ${{ env.TAG }}
-
-      - name: Commit and Push README.md
-        if: success() # 仅在测试成功后运行
-        run: |
-          git add README.md
-          git commit -m "Update README.md with new tag ${TAG}"
-          git push origin main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - name: Setup Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: ${{ matrix.go }}
+    - name: Test
+      run: go test ./... -coverprofile=coverage.txt
+    - name: Create Tag
+      if: success()
+      run: |
+        git config --global user.name 'github-actions'
+        git config --global user.email 'github-actions@github.com'
+        TAG="v0.0.7-$(date +'%Y%m%d%H%M%S')"
+        git tag $TAG
+        git push origin $TAG
+        echo "TAG=$TAG" >> $GITHUB_ENV
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Update README.md
+      if: success()
+      run: |
+        sed -i "s|go get github.com/oneclickvirt/gostun@.*|go get github.com/oneclickvirt/gostun@${TAG}|" README.md
+      env:
+        TAG: ${{ env.TAG }}
+    - name: Commit and Push README.md
+      if: success()
+      run: |
+        git add README.md
+        git commit -m "Update README.md with new tag ${TAG}"
+        git push origin main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      GOPROXY: https://proxy.golang.org|direct
+'on':
+  workflow_dispatch: null
