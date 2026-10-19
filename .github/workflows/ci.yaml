@@ -5,7 +5,7 @@ jobs:
     strategy:
       matrix:
         go:
-        - 1.22.x
+        - stable
         os:
         - ubuntu-latest
     runs-on: ${{ matrix.os }}
