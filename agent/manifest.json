@@ -1,0 +1,11 @@
+{
+  "repository": "oneclickvirt/gostun",
+  "skill_name": "oneclickvirt-gostun",
+  "mcp": true,
+  "files": {
+    "agent/profile.json": "6efc1535d414f9dd2b2bfebf52a91a176e6e36e5b9a175ebc7b246fd62a3acd9",
+    "skills/oneclickvirt-gostun/SKILL.md": "754650ad2277b2820dd03c7f278479ab285cd0ded9ee7f7d6d498471d5a4ba5f",
+    "skills/oneclickvirt-gostun/SKILL_ZH.md": "a46a9b1e8f006ab145fd04f0080d48a5e91ad3707184e71c31e45b02f5f697ac",
+    "agent/server.py": "d01416e6194095d90bf0d49ea29f7122969f0b74cf4d74ed0b1ce78753423a7d"
+  }
+}

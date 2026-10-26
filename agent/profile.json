@@ -1,0 +1,38 @@
+{
+  "repository": "oneclickvirt/gostun",
+  "branch": "main",
+  "skill_name": "oneclickvirt-gostun",
+  "purpose": "Detect NAT behavior using bounded STUN probes. A UDP/network failure is not proof of a NAT type.",
+  "notes": [
+    "Read probe_help from the installed binary before assuming flags are supported. MCP returns native JSON when the program provides JSON, otherwise native text.",
+    "Keep partial/network errors distinct from confirmed test outcomes. Current release assets and their actual architecture are available through release_assets."
+  ],
+  "guide": "https://www.spiritlhl.net/guide/agent_integrations.html",
+  "releases": true,
+  "mcp": true,
+  "binary": "gostun",
+  "asset_prefix": "gostun",
+  "presets": {
+    "nat": {
+      "args": [
+        "-json",
+        "-timeout",
+        "2",
+        "-concurrency",
+        "2"
+      ],
+      "timeout": 40
+    }
+  },
+  "benchmark": false,
+  "source_files": [
+    "cmd/main.go",
+    "go.mod",
+    "gostun_install.sh"
+  ],
+  "purpose_zh": "通过有时限的 STUN 探测判断 NAT 行为，保留 UDP 和网络失败结果。",
+  "notes_zh": [
+    "先用 probe_help 核对已安装程序的实际帮助。程序支持 JSON 时返回原生 JSON，否则返回原生文本。",
+    "区分部分结果、网络失败和确定结论；通过 release_assets 查询当前真实产物及架构。"
+  ]
+}
